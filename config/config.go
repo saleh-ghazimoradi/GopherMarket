@@ -13,13 +13,14 @@ var (
 )
 
 type Config struct {
-	Redis      Redis
-	Postgresql Postgresql
-	Server     Server
-	JWT        JWT
-	AWS        AWS
-	Upload     Upload
-	SMTP       SMTP
+	Application Application
+	Redis       Redis
+	Postgresql  Postgresql
+	Server      Server
+	JWT         JWT
+	AWS         AWS
+	Upload      Upload
+	SMTP        SMTP
 }
 
 type Application struct {
