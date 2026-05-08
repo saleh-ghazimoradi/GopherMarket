@@ -1,0 +1,93 @@
+# .golangci.yml
+version: "2"
+
+run:
+  tests: true
+
+linters:
+  default: none
+  enable:
+    - errcheck
+    # gosimple is now part of staticcheck – removed
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - revive
+    - misspell
+    - bodyclose
+    - gosec
+    - noctx
+    - unconvert
+    - prealloc
+    - wastedassign
+    - sqlclosecheck
+    - rowserrcheck
+    # exportloopref – obsolete in Go 1.22+, removed
+    - nilerr
+    - nilnil
+    - errname
+    - predeclared
+    - whitespace
+
+linters-settings:
+  errcheck:
+    check-blank: false
+    check-type-assertions: true
+
+  revive:
+    confidence: 0.1
+    rules:
+      - name: blank-imports
+      - name: context-as-argument
+      - name: context-keys-type
+      - name: dot-imports
+      - name: error-return
+      - name: error-strings
+      - name: error-naming
+      - name: exported
+      - name: if-return
+      - name: increment-decrement
+      - name: var-naming
+      - name: var-declaration
+      - name: package-comments
+      - name: range
+      - name: receiver-naming
+      - name: time-naming
+      - name: unexported-return
+      - name: indent-error-flow
+      - name: errorf
+      - name: empty-block
+      - name: superfluous-else
+      - name: unused-parameter
+      - name: unreachable-code
+      - name: redefines-builtin-id
+
+  gosec:
+    excludes:
+      - G101
+      - G104
+      - G204
+    severity: medium
+    confidence: medium
+
+  staticcheck:
+    checks: ["all", "-S1012"]
+
+  unused:
+    check-exported: false
+
+  govet:
+    enable:
+      - shadow
+      - nilness
+      - unusedwrite
+      - lostcancel
+      - httpresponse
+
+  misspell:
+    locale: US
+
+formatters:
+  enable:
+    - gofmt
