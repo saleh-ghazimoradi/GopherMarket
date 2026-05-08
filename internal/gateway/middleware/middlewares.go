@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"fmt"
+	"github.com/saleh-ghazimoradi/GopherMarket/internal/helper"
 	"log/slog"
 	"net/http"
 )
@@ -43,6 +44,8 @@ func (m *Middleware) Recover(next http.Handler) http.Handler {
 	})
 }
 
-func NewMiddleware() *Middleware {
-	return &Middleware{}
+func NewMiddleware(logger *slog.Logger) *Middleware {
+	return &Middleware{
+		logger: logger,
+	}
 }
