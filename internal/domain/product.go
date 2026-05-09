@@ -43,6 +43,7 @@ type ProductImage struct {
 	AltText   string
 	IsPrimary bool `gorm:"default:false"`
 	CreatedAt time.Time
+	UpdatedAt time.Time
 	DeletedAt gorm.DeletedAt `gorm:"index"`
 
 	Product Product
