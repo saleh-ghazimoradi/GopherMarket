@@ -39,6 +39,10 @@ func ValidateRefreshTokenRequest(v *helper.Validator, req *RefreshTokenRequest) 
 	validateRefreshToken(v, req.RefreshToken)
 }
 
+func ValidateLogoutRequest(v *helper.Validator, req *LogoutRequest) {
+	validateRefreshToken(v, req.RefreshToken)
+}
+
 func ValidateProfileRequest(v *helper.Validator, req *UpdateProfileRequest) {
 	validateFirstNameAndLastName(v, req.FirstName)
 	validateFirstNameAndLastName(v, req.LastName)

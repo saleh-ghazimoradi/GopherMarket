@@ -1,5 +1,7 @@
 package dto
 
+import "time"
+
 type RegisterRequest struct {
 	Email     string `json:"email"`
 	Password  string `json:"password"`
@@ -13,18 +15,24 @@ type LoginRequest struct {
 	Password string `json:"password"`
 }
 
+type LogoutRequest struct {
+	RefreshToken string `json:"refresh_token"`
+}
+
 type RefreshTokenRequest struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
 type UserResponse struct {
-	Id        uint   `json:"id"`
-	Email     string `json:"email"`
-	FirstName string `json:"first_name"`
-	LastName  string `json:"last_name"`
-	Phone     string `json:"phone"`
-	Role      string `json:"role"`
-	IsActive  bool   `json:"is_active"`
+	Id        uint      `json:"id"`
+	Email     string    `json:"email"`
+	FirstName string    `json:"first_name"`
+	LastName  string    `json:"last_name"`
+	Phone     string    `json:"phone"`
+	Role      string    `json:"role"`
+	IsActive  bool      `json:"is_active"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type AuthResponse struct {
