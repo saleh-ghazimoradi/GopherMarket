@@ -116,12 +116,7 @@ func (p *Postgresql) uri() string {
 
 func (p *Postgresql) Connect() (*gorm.DB, error) {
 	db, err := gorm.Open(postgres.Open(p.uri()), &gorm.Config{
-		Logger: logger.New(slog.NewLogLogger(p.logger.Handler(), slog.LevelInfo),
-			logger.Config{SlowThreshold: 200 * time.Millisecond,
-				LogLevel: logger.Info,
-				Colorful: true,
-			},
-		),
+		Logger: logger.Default.LogMode(logger.Info),
 	})
 
 	if err != nil {
