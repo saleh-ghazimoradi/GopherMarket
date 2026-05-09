@@ -44,6 +44,6 @@ func ValidateLogoutRequest(v *helper.Validator, req *LogoutRequest) {
 }
 
 func ValidateProfileRequest(v *helper.Validator, req *UpdateProfileRequest) {
-	validateFirstNameAndLastName(v, req.FirstName)
-	validateFirstNameAndLastName(v, req.LastName)
+	validateFirstNameAndLastName(v, *req.FirstName)
+	validateFirstNameAndLastName(v, *req.LastName)
 }
