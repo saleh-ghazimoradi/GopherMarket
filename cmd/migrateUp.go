@@ -56,7 +56,7 @@ var migrateUpCmd = &cobra.Command{
 				sLogger.Error("error closing database connection", "error", err)
 			}
 		}()
-		
+
 		migrator, err := migration.NewMigrator(sqlDB, cfg.Postgresql.Name)
 		if err != nil {
 			sLogger.Error("migration init failed", "error", err)
@@ -74,7 +74,6 @@ var migrateUpCmd = &cobra.Command{
 		}
 
 		sLogger.Info("Migrations applied successfully")
-
 	},
 }
 
