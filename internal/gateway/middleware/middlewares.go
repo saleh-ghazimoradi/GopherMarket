@@ -96,8 +96,17 @@ func (m *Middleware) Admin(next http.Handler) http.Handler {
 	})
 }
 
-func NewMiddleware(logger *slog.Logger) *Middleware {
+func (m *Middleware) WrapAuth(handlerFunc http.HandlerFunc) http.Handler {
+	return m.Authenticate(handlerFunc)
+}
+
+func (m *Middleware) WrapAdmin(handlerFunc http.HandlerFunc) http.Handler {
+	return m.Admin(handlerFunc)
+}
+
+func NewMiddleware(logger *slog.Logger, cfg *config.Config) *Middleware {
 	return &Middleware{
 		logger: logger,
+		cfg:    cfg,
 	}
 }
