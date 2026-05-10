@@ -86,29 +86,45 @@ var runCmd = &cobra.Command{
 		}
 
 		/*----------Dependencies----------*/
-		middlewares := middleware.NewMiddleware(sLogger)
+		middlewares := middleware.NewMiddleware(sLogger, cfg)
 
 		/*----------Repositories----------*/
+		cacheRepository := repository.NewRedisCache(redis)
 		userRepository := repository.NewUserRepository(db, db)
-		cartRepository := repository.NewCartRepository(db, db)
 		tokenRepository := repository.NewTokenRepository(db, db)
+		cartRepository := repository.NewCartRepository(db, db)
+		categoryRepository := repository.NewCategoryRepository(db, db)
+		productRepository := repository.NewProductRepository(db, db)
+		//orderRepository := repository.NewOrderRepository(db, db)
 
 		/*----------Services----------*/
 		authService := service.NewAuthService(userRepository, cartRepository, tokenRepository, cfg)
+		userService := service.NewUserService(userRepository)
+		categoryService := service.NewCategoryService(categoryRepository)
+		productService := service.NewProductService(productRepository, cacheRepository)
 
 		/*----------Handlers----------*/
 		healthHandler := handler.NewHealthCheckHandler(cfg)
 		authHandler := handler.NewAuthHandler(authService)
+		userHandler := handler.NewUserHandler(userService)
+		categoryHandler := handler.NewCategoryHandler(categoryService)
+		productHandler := handler.NewProductHandler(productService)
 
 		/*----------Routes----------*/
 		healthRoute := route.NewHealthCheckRoute(healthHandler)
 		authRoute := route.NewAuthRoute(authHandler)
+		userRoute := route.NewUserRoute(middlewares, userHandler)
+		categoryRoute := route.NewCategoryRoute(middlewares, categoryHandler)
+		productRoute := route.NewProductRoute(middlewares, productHandler)
 
 		/*----------Route Registry----------*/
 		routes := route.NewRegisterRoute(
 			route.WithMiddleware(middlewares),
 			route.WithHealthCheckRoute(healthRoute),
 			route.WithAuthRoute(authRoute),
+			route.WithUserRoute(userRoute),
+			route.WithCategoryRoute(categoryRoute),
+			route.WithProductRoute(productRoute),
 		)
 
 		/*----------HTTP Server----------*/
