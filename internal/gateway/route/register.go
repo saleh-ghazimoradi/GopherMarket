@@ -10,6 +10,8 @@ type RegisterRoute struct {
 	healthCheckRoute *HealthCheckRoute
 	authRoute        *AuthRoute
 	userRoute        *UserRoute
+	categoryRoute    *CategoryRoute
+	ProductRoute     *ProductRoute
 }
 
 type Options func(*RegisterRoute)
@@ -38,11 +40,25 @@ func WithUserRoute(userRoute *UserRoute) Options {
 	}
 }
 
+func WithCategoryRoute(categoryRoute *CategoryRoute) Options {
+	return func(r *RegisterRoute) {
+		r.categoryRoute = categoryRoute
+	}
+}
+
+func WithProductRoute(productRoute *ProductRoute) Options {
+	return func(r *RegisterRoute) {
+		r.ProductRoute = productRoute
+	}
+}
+
 func (r *RegisterRoute) RegisterRoutes() http.Handler {
 	mux := http.NewServeMux()
 	r.healthCheckRoute.HealthCheckRoutes(mux)
 	r.authRoute.AuthRoutes(mux)
 	r.userRoute.UserRoutes(mux)
+	r.categoryRoute.CategoryRoutes(mux)
+	r.ProductRoute.ProductRoutes(mux)
 	return r.middleware.Recover(r.middleware.Logging(r.middleware.CORS(mux)))
 }
 
