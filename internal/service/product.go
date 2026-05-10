@@ -49,7 +49,7 @@ func (p *productService) CreateProduct(ctx context.Context, req *dto.CreateProdu
 
 	_ = p.redisCache.DeletePattern(ctx, productListPattern)
 
-	return p.toProductResp(product), nil
+	return p.GetProductById(ctx, product.Id)
 }
 
 func (p *productService) GetProducts(ctx context.Context, page, limit int) ([]*dto.ProductResponse, *helper.PaginatedMeta, error) {
@@ -150,7 +150,7 @@ func (p *productService) DeleteProduct(ctx context.Context, id uint) error {
 	if err := p.productRepository.DeleteProduct(ctx, id); err != nil {
 		return err
 	}
-	
+
 	_ = p.redisCache.Delete(ctx, fmt.Sprintf(productByIdKey, id))
 	_ = p.redisCache.DeletePattern(ctx, productListPattern)
 
@@ -198,7 +198,7 @@ func (p *productService) toProductResp(product *domain.Product) *dto.ProductResp
 			Id:          product.Category.Id,
 			Name:        product.Category.Name,
 			Description: product.Category.Description,
-			IsActive:    product.IsActive,
+			IsActive:    product.Category.IsActive,
 			CreatedAt:   product.Category.CreatedAt,
 			UpdatedAt:   product.Category.UpdatedAt,
 		},
