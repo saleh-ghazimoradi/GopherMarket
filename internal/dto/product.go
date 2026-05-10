@@ -12,12 +12,12 @@ type CreateProductRequest struct {
 }
 
 type UpdateProductRequest struct {
-	CategoryId  uint    `json:"category_id"`
-	Name        string  `json:"name"`
-	Description string  `json:"description"`
-	Price       float64 `json:"price"`
-	Stock       int     `json:"stock"`
-	IsActive    *bool   `json:"is_active"`
+	CategoryId  *uint    `json:"category_id"`
+	Name        *string  `json:"name"`
+	Description *string  `json:"description"`
+	Price       *float64 `json:"price"`
+	Stock       *int     `json:"stock"`
+	IsActive    *bool    `json:"is_active"`
 }
 
 type ProductResponse struct {
