@@ -87,6 +87,8 @@ func (m *Middleware) Admin(next http.Handler) http.Handler {
 			return
 		}
 
+		fmt.Println("hellllo")
+
 		if role != string(domain.Admin) {
 			helper.ForbiddenResponse(w, "Access Denied")
 			return
@@ -101,7 +103,7 @@ func (m *Middleware) WrapAuth(handlerFunc http.HandlerFunc) http.Handler {
 }
 
 func (m *Middleware) WrapAdmin(handlerFunc http.HandlerFunc) http.Handler {
-	return m.Admin(handlerFunc)
+	return m.Authenticate(m.Admin(handlerFunc))
 }
 
 func NewMiddleware(logger *slog.Logger, cfg *config.Config) *Middleware {
