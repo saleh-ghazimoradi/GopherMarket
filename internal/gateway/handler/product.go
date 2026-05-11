@@ -10,6 +10,7 @@ import (
 
 type ProductHandler struct {
 	productService service.ProductService
+	uploadService  service.UploadService
 }
 
 func (p *ProductHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {
@@ -109,11 +110,37 @@ func (p *ProductHandler) DeleteProduct(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *ProductHandler) UploadProductImage(w http.ResponseWriter, r *http.Request) {
+	id, err := helper.ReadParams(r)
+	if err != nil {
+		helper.BadRequestResponse(w, "Invalid id", err)
+		return
+	}
 
+	file, header, err := r.FormFile("image")
+	if err != nil {
+		helper.BadRequestResponse(w, "No file uploaded", err)
+		return
+	}
+
+	defer file.Close()
+
+	url, err := p.uploadService.UploadProductImage(id, header)
+	if err != nil {
+		helper.InternalServerError(w, "failed to upload product image", err)
+		return
+	}
+
+	if err := p.productService.AddProductImage(r.Context(), id, url, header.Filename); err != nil {
+		helper.InternalServerError(w, "failed to upload product image", err)
+		return
+	}
+
+	helper.CreatedResponse(w, "product image successfully uploaded", url)
 }
 
-func NewProductHandler(productService service.ProductService) *ProductHandler {
+func NewProductHandler(productService service.ProductService, uploadService service.UploadService) *ProductHandler {
 	return &ProductHandler{
 		productService: productService,
+		uploadService:  uploadService,
 	}
 }
