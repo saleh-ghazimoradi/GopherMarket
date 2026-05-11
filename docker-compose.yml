@@ -7,6 +7,7 @@ services:
       POSTGRES_DB: ${POSTGRES_NAME}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PGDATA: /var/lib/postgresql/data
     volumes:
       - db-data:/var/lib/postgresql/data
     ports:
@@ -33,7 +34,7 @@ services:
 
   localstack:
     image: localstack/localstack:latest
-    container_name: localstack
+    container_name: localstackGopherMarket
     environment:
       - SERVICES=s3,sqs
       - DEFAULT_REGION=us-east-1
@@ -48,7 +49,7 @@ services:
 
   mailpit:
     image: axllent/mailpit:v1.27
-    container_name: mailpit
+    container_name: mailpitGopherMarket
     restart: unless-stopped
     volumes:
       - mailpit_data:/data
