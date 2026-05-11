@@ -13,6 +13,7 @@ import (
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/repository"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/server"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/service"
+	"github.com/saleh-ghazimoradi/GopherMarket/pkg/uploadStrategy"
 	"github.com/spf13/cobra"
 	"log/slog"
 	"os"
@@ -88,6 +89,14 @@ var runCmd = &cobra.Command{
 		/*----------Dependencies----------*/
 		middlewares := middleware.NewMiddleware(sLogger, cfg)
 
+		/*----------Upload Strategy----------*/
+		var uploadStrategies uploadStrategy.UploadStrategy
+		if cfg.Upload.UploadProviders == "s3" {
+			uploadStrategies = uploadStrategy.NewS3Strategy(cfg)
+		} else {
+			uploadStrategies = uploadStrategy.NewLocalStrategy(cfg.Upload.Path)
+		}
+
 		/*----------Repositories----------*/
 		cacheRepository := repository.NewRedisCache(redis)
 		userRepository := repository.NewUserRepository(db, db)
@@ -102,13 +111,14 @@ var runCmd = &cobra.Command{
 		userService := service.NewUserService(userRepository)
 		categoryService := service.NewCategoryService(categoryRepository)
 		productService := service.NewProductService(productRepository, cacheRepository)
+		uploadService := service.NewUploadService(uploadStrategies)
 
 		/*----------Handlers----------*/
 		healthHandler := handler.NewHealthCheckHandler(cfg)
 		authHandler := handler.NewAuthHandler(authService)
 		userHandler := handler.NewUserHandler(userService)
 		categoryHandler := handler.NewCategoryHandler(categoryService)
-		productHandler := handler.NewProductHandler(productService)
+		productHandler := handler.NewProductHandler(productService, uploadService)
 
 		/*----------Routes----------*/
 		healthRoute := route.NewHealthCheckRoute(healthHandler)
