@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS product_images(
-                                             id BIGSERIAL PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY,
     product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
     url VARCHAR(500) NOT NULL,
     alt_text VARCHAR(255),
