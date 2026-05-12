@@ -11,7 +11,9 @@ type RegisterRoute struct {
 	authRoute        *AuthRoute
 	userRoute        *UserRoute
 	categoryRoute    *CategoryRoute
-	ProductRoute     *ProductRoute
+	productRoute     *ProductRoute
+	cartRoute        *CartRoute
+	orderRoute       *OrderRoute
 }
 
 type Options func(*RegisterRoute)
@@ -48,7 +50,19 @@ func WithCategoryRoute(categoryRoute *CategoryRoute) Options {
 
 func WithProductRoute(productRoute *ProductRoute) Options {
 	return func(r *RegisterRoute) {
-		r.ProductRoute = productRoute
+		r.productRoute = productRoute
+	}
+}
+
+func WithCartRoute(cartRoute *CartRoute) Options {
+	return func(r *RegisterRoute) {
+		r.cartRoute = cartRoute
+	}
+}
+
+func WithOrderRoute(orderRoute *OrderRoute) Options {
+	return func(r *RegisterRoute) {
+		r.orderRoute = orderRoute
 	}
 }
 
@@ -58,7 +72,9 @@ func (r *RegisterRoute) RegisterRoutes() http.Handler {
 	r.authRoute.AuthRoutes(mux)
 	r.userRoute.UserRoutes(mux)
 	r.categoryRoute.CategoryRoutes(mux)
-	r.ProductRoute.ProductRoutes(mux)
+	r.productRoute.ProductRoutes(mux)
+	r.cartRoute.CartRoutes(mux)
+	r.orderRoute.OrderRoute(mux)
 	return r.middleware.Recover(r.middleware.Logging(r.middleware.CORS(mux)))
 }
 
