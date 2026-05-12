@@ -9,6 +9,7 @@ help:
 	@echo "  make docker-down- Stop all the docker containers"
 	@echo "  make fmt      	 - Format all the code"
 	@echo "  make vet      	 - Run vet on all the codebase"
+	@echo "  make swagger    - Generate Swagger Docs"
 
 docker-up:
 	docker compose up -d
@@ -37,6 +38,10 @@ migrate-up:
 
 migrate-down:
 	go run . migrateDown
+
+swagger:
+	mkdir -p docs
+	swag init -g main.go -o docs --parseDependency --parseInternal --exclude .git,docker-compose.yml,infra
 
 
 
