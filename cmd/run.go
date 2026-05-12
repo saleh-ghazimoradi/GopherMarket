@@ -114,7 +114,7 @@ var runCmd = &cobra.Command{
 		productService := service.NewProductService(productRepository, cacheRepository)
 		uploadService := service.NewUploadService(uploadStrategies)
 		cartService := service.NewCartService(cartRepository, cartItemRepository, productRepository)
-		orderService := service.NewOrderService(orderRepository)
+		orderService := service.NewOrderService(orderRepository, cartRepository, cartItemRepository, productRepository, db)
 
 		/*----------Handlers----------*/
 		healthHandler := handler.NewHealthCheckHandler(cfg)
@@ -132,7 +132,7 @@ var runCmd = &cobra.Command{
 		categoryRoute := route.NewCategoryRoute(middlewares, categoryHandler)
 		productRoute := route.NewProductRoute(middlewares, productHandler)
 		cartRoute := route.NewCartRoute(middlewares, cartHandler)
-		orderRoute := route.NewOrderRoute(orderHandler)
+		orderRoute := route.NewOrderRoute(middlewares, orderHandler)
 
 		/*----------Route Registry----------*/
 		routes := route.NewRegisterRoute(
