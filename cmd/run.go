@@ -102,9 +102,10 @@ var runCmd = &cobra.Command{
 		userRepository := repository.NewUserRepository(db, db)
 		tokenRepository := repository.NewTokenRepository(db, db)
 		cartRepository := repository.NewCartRepository(db, db)
+		cartItemRepository := repository.NewCartItemRepository(db, db)
 		categoryRepository := repository.NewCategoryRepository(db, db)
 		productRepository := repository.NewProductRepository(db, db)
-		//orderRepository := repository.NewOrderRepository(db, db)
+		orderRepository := repository.NewOrderRepository(db, db)
 
 		/*----------Services----------*/
 		authService := service.NewAuthService(userRepository, cartRepository, tokenRepository, cfg)
@@ -112,6 +113,8 @@ var runCmd = &cobra.Command{
 		categoryService := service.NewCategoryService(categoryRepository)
 		productService := service.NewProductService(productRepository, cacheRepository)
 		uploadService := service.NewUploadService(uploadStrategies)
+		cartService := service.NewCartService(cartRepository, cartItemRepository, productRepository)
+		orderService := service.NewOrderService(orderRepository)
 
 		/*----------Handlers----------*/
 		healthHandler := handler.NewHealthCheckHandler(cfg)
@@ -119,6 +122,8 @@ var runCmd = &cobra.Command{
 		userHandler := handler.NewUserHandler(userService)
 		categoryHandler := handler.NewCategoryHandler(categoryService)
 		productHandler := handler.NewProductHandler(productService, uploadService)
+		cartHandler := handler.NewCartHandler(cartService)
+		orderHandler := handler.NewOrderHandler(orderService)
 
 		/*----------Routes----------*/
 		healthRoute := route.NewHealthCheckRoute(healthHandler)
@@ -126,6 +131,8 @@ var runCmd = &cobra.Command{
 		userRoute := route.NewUserRoute(middlewares, userHandler)
 		categoryRoute := route.NewCategoryRoute(middlewares, categoryHandler)
 		productRoute := route.NewProductRoute(middlewares, productHandler)
+		cartRoute := route.NewCartRoute(middlewares, cartHandler)
+		orderRoute := route.NewOrderRoute(orderHandler)
 
 		/*----------Route Registry----------*/
 		routes := route.NewRegisterRoute(
@@ -135,6 +142,8 @@ var runCmd = &cobra.Command{
 			route.WithUserRoute(userRoute),
 			route.WithCategoryRoute(categoryRoute),
 			route.WithProductRoute(productRoute),
+			route.WithCartRoute(cartRoute),
+			route.WithOrderRoute(orderRoute),
 		)
 
 		/*----------HTTP Server----------*/
