@@ -18,6 +18,7 @@ func (p *ProductRoute) ProductRoutes(mux *http.ServeMux) {
 	mux.Handle("PUT /v1/products/{id}", p.middleware.WrapAdmin(p.productHandler.UpdateProduct))
 	mux.Handle("DELETE /v1/products/{id}", p.middleware.WrapAdmin(p.productHandler.DeleteProduct))
 	mux.Handle("POST /v1/products/{id}/image", p.middleware.WrapAdmin(p.productHandler.UploadProductImage))
+	mux.Handle("GET /uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir("./uploads/"))))
 }
 
 func NewProductRoute(middleware *middleware.Middleware, productHandler *handler.ProductHandler) *ProductRoute {
