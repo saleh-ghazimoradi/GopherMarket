@@ -24,15 +24,8 @@ type cartItemRepository struct {
 
 func (c *cartItemRepository) GetCartItem(ctx context.Context, cartId, productId uint) (*domain.CartItem, error) {
 	var cartItem domain.CartItem
-	if err := c.dbRead.WithContext(ctx).Where("cart_id = ? AND product_id = ?", cartId, productId).First(&cartItem).Error; err != nil {
-		switch {
-		case errors.Is(err, gorm.ErrRecordNotFound):
-			return nil, ErrsNotFound
-		default:
-			return nil, err
-		}
-	}
-	return &cartItem, nil
+	err := c.dbRead.WithContext(ctx).Where("cart_id = ? and product_id = ?", cartId, productId).First(&cartItem).Error
+	return &cartItem, err
 }
 
 func (c *cartItemRepository) CreateCartItem(ctx context.Context, item *domain.CartItem) error {
@@ -55,7 +48,6 @@ func (c *cartItemRepository) GetCartItemWithUser(ctx context.Context, userId, it
 			return nil, err
 		}
 	}
-
 	return &item, nil
 }
 

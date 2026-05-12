@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/domain"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/dto"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/repository"
@@ -25,10 +24,10 @@ type cartService struct {
 func (c *cartService) GetCart(ctx context.Context, userId uint) (*dto.CartResponse, error) {
 	cart, err := c.cartRepository.GetCartByUserId(ctx, userId)
 	if err != nil {
-		return nil, fmt.Errorf("get cart by user id %w", err)
+		return nil, err
 	}
 
-	return c.toCartReps(cart), nil
+	return c.convertToCartResponse(cart), nil
 }
 
 func (c *cartService) AddToCart(ctx context.Context, userId uint, req *dto.AddToCartRequest) (*dto.CartResponse, error) {
@@ -43,24 +42,22 @@ func (c *cartService) AddToCart(ctx context.Context, userId uint, req *dto.AddTo
 
 	cart, err := c.cartRepository.GetOrCreateCart(ctx, userId)
 	if err != nil {
-		return nil, fmt.Errorf("get or create cart %w", err)
+		return nil, err
 	}
 
-	cartItem, err := c.cartItemRepository.GetCartItem(ctx, cart.Id, product.Id)
+	cartItem, err := c.cartItemRepository.GetCartItem(ctx, cart.Id, req.ProductId)
 	if err != nil {
 		item := &domain.CartItem{
 			CartId:    cart.Id,
 			ProductId: product.Id,
 			Quantity:  req.Quantity,
 		}
-
 		_ = c.cartItemRepository.CreateCartItem(ctx, item)
 	} else {
 		cartItem.Quantity += req.Quantity
 		if cartItem.Quantity > product.Stock {
 			return nil, errors.New("not enough stock")
 		}
-
 		_ = c.cartItemRepository.UpdateCartItem(ctx, cartItem)
 	}
 
@@ -70,12 +67,12 @@ func (c *cartService) AddToCart(ctx context.Context, userId uint, req *dto.AddTo
 func (c *cartService) UpdateCartItem(ctx context.Context, userId, itemId uint, req *dto.UpdateCartItemRequest) (*dto.CartResponse, error) {
 	cartItem, err := c.cartItemRepository.GetCartItemWithUser(ctx, userId, itemId)
 	if err != nil {
-		return nil, fmt.Errorf("get cart item with user id %w", err)
+		return nil, err
 	}
 
 	product, err := c.productRepository.GetProductById(ctx, cartItem.ProductId)
 	if err != nil {
-		return nil, fmt.Errorf("get product id %w", err)
+		return nil, err
 	}
 
 	if product.Stock < req.Quantity {
@@ -84,7 +81,7 @@ func (c *cartService) UpdateCartItem(ctx context.Context, userId, itemId uint, r
 
 	cartItem.Quantity = req.Quantity
 	if err := c.cartItemRepository.UpdateCartItem(ctx, cartItem); err != nil {
-		return nil, fmt.Errorf("update cart item %w", err)
+		return nil, err
 	}
 
 	return c.GetCart(ctx, userId)
@@ -94,7 +91,7 @@ func (c *cartService) RemoveFromCart(ctx context.Context, userId, itemId uint) e
 	return c.cartItemRepository.DeleteCartItem(ctx, userId, itemId)
 }
 
-func (c *cartService) toCartReps(cart *domain.Cart) *dto.CartResponse {
+func (c *cartService) convertToCartResponse(cart *domain.Cart) *dto.CartResponse {
 	cartItems := make([]dto.CartItemResponse, len(cart.CartItems))
 	var total float64
 

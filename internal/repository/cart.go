@@ -26,7 +26,7 @@ func (c *cartRepository) CreateCart(ctx context.Context, cart *domain.Cart) erro
 
 func (c *cartRepository) GetCartByUserId(ctx context.Context, userId uint) (*domain.Cart, error) {
 	var cart domain.Cart
-	if err := c.dbRead.WithContext(ctx).Preload("CartItems.Product.Category").First(&cart, "user_id = ?", userId).Error; err != nil {
+	if err := c.dbRead.WithContext(ctx).Preload("CartItems.Product.Category").Where("user_id = ?", userId).First(&cart).Error; err != nil {
 		switch {
 		case errors.Is(err, gorm.ErrRecordNotFound):
 			return nil, ErrsNotFound
@@ -53,13 +53,17 @@ func (c *cartRepository) GetCartWithItemsAndProducts(ctx context.Context, userId
 func (c *cartRepository) GetOrCreateCart(ctx context.Context, userId uint) (*domain.Cart, error) {
 	var cart domain.Cart
 
-	if err := c.dbRead.WithContext(ctx).Where("user_id = ?", userId).First(&cart).Error; err != nil {
-		switch {
-		case errors.Is(err, gorm.ErrRecordNotFound):
+	err := c.dbRead.WithContext(ctx).
+		Where("user_id = ?", userId).
+		First(&cart).Error
+
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			cart = domain.Cart{UserId: userId}
 			if err := c.dbWrite.WithContext(ctx).Create(&cart).Error; err != nil {
 				return nil, err
 			}
+			return &cart, nil
 		}
 		return nil, err
 	}
