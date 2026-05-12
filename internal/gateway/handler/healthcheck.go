@@ -10,6 +10,13 @@ type HealthCheckHandler struct {
 	cfg *config.Config
 }
 
+// HealthCheck godoc
+// @Summary      Health check
+// @Description  Check if the server is running
+// @Tags         healthcheck
+// @Produce      json
+// @Success      200 {string} string "I'm breathing!"
+// @Router       /healthcheck [get]
 func (h *HealthCheckHandler) HealthCheck(w http.ResponseWriter, r *http.Request) {
 	data := map[string]any{
 		"status": "available",

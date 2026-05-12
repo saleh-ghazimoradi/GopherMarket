@@ -12,6 +12,16 @@ type CartHandler struct {
 	cartService service.CartService
 }
 
+// GetCart docs
+// @Summary Get user's cart
+// @Description Retrieve current user's shopping cart with all items
+// @Tags Carts
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} helper.Response{data=dto.CartResponse} "Cart retrieved successfully"
+// @Failure 401 {object} helper.Response "Unauthorized"
+// @Failure 404 {object} helper.Response "Cart not found"
+// @Router /carts [get]
 func (c *CartHandler) GetCart(w http.ResponseWriter, r *http.Request) {
 	userId, exists := utils.UserIdFromContext(r.Context())
 	if !exists {
@@ -28,6 +38,18 @@ func (c *CartHandler) GetCart(w http.ResponseWriter, r *http.Request) {
 	helper.SuccessResponse(w, "Cart successfully retrieved", cart)
 }
 
+// AddToCart docs
+// @Summary Add item to cart
+// @Description Add a product to the user's shopping cart
+// @Tags Carts
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body dto.AddToCartRequest true "Item to add to cart"
+// @Success 200 {object} helper.Response{data=dto.CartResponse} "Item added to cart successfully"
+// @Failure 400 {object} helper.Response "Invalid request data or insufficient stock"
+// @Failure 401 {object} helper.Response "Unauthorized"
+// @Router /carts/items [post]
 func (c *CartHandler) AddToCart(w http.ResponseWriter, r *http.Request) {
 	userId, exists := utils.UserIdFromContext(r.Context())
 	if !exists {
@@ -50,6 +72,19 @@ func (c *CartHandler) AddToCart(w http.ResponseWriter, r *http.Request) {
 	helper.SuccessResponse(w, "Item successfully added to cart", cart)
 }
 
+// UpdateCart docs
+// @Summary Update cart item quantity
+// @Description Update the quantity of an item in the user's cart
+// @Tags Carts
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "Cart Item ID"
+// @Param request body dto.UpdateCartItemRequest true "New quantity"
+// @Success 200 {object} helper.Response{data=dto.CartResponse} "Cart item updated successfully"
+// @Failure 400 {object} helper.Response "Invalid request data or insufficient stock"
+// @Failure 401 {object} helper.Response "Unauthorized"
+// @Router /carts/items/{id} [put]
 func (c *CartHandler) UpdateCart(w http.ResponseWriter, r *http.Request) {
 	userId, exists := utils.UserIdFromContext(r.Context())
 	if !exists {
@@ -78,6 +113,16 @@ func (c *CartHandler) UpdateCart(w http.ResponseWriter, r *http.Request) {
 	helper.SuccessResponse(w, "Cart successfully updated to cart", cart)
 }
 
+// RemoveCart docs
+// @Summary Remove item from cart
+// @Description Remove an item from the user's shopping cart
+// @Tags Carts
+// @Security BearerAuth
+// @Param id path int true "Cart Item ID"
+// @Success 200 {object} helper.Response "Item removed from cart successfully"
+// @Failure 400 {object} helper.Response "Invalid cart item ID"
+// @Failure 401 {object} helper.Response "Unauthorized"
+// @Router /carts/items/{id} [delete]
 func (c *CartHandler) RemoveCart(w http.ResponseWriter, r *http.Request) {
 	userId, exists := utils.UserIdFromContext(r.Context())
 	if !exists {

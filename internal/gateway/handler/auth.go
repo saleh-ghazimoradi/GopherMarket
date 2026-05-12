@@ -11,6 +11,16 @@ type AuthHandler struct {
 	authService service.AuthService
 }
 
+// Register godoc
+// @Summary      Register a new user
+// @Description  Create a new user account with email and password
+// @Tags         Authentication
+// @Accept       json
+// @Produce      json
+// @Param        request body dto.RegisterRequest true "User registration data"
+// @Success      201 {object} helper.Response{data=dto.AuthResponse}
+// @Failure      400 {object} helper.Response "Invalid request data or user already exists"
+// @Router       /auth/register [post]
 func (a *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	var payload dto.RegisterRequest
 	if err := helper.ReadJSON(w, r, &payload); err != nil {
@@ -34,6 +44,16 @@ func (a *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	helper.CreatedResponse(w, "user successfully registered", user)
 }
 
+// Login godoc
+// @Summary      User login
+// @Description  Authenticate user with email and password
+// @Tags         Authentication
+// @Accept       json
+// @Produce      json
+// @Param        request body dto.LoginRequest true "User login credentials"
+// @Success      200 {object} helper.Response{data=dto.AuthResponse} "Login successfully"
+// @Failure      401 {object} helper.Response "Invalid credentials"
+// @Router       /auth/login [post]
 func (a *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	var payload dto.LoginRequest
 	if err := helper.ReadJSON(w, r, &payload); err != nil {
@@ -57,6 +77,16 @@ func (a *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	helper.SuccessResponse(w, "user successfully login", user)
 }
 
+// RefreshToken docs
+// @Summary Refresh access token
+// @Description Get a new access token using refresh token
+// @Tags Authentication
+// @Accept json
+// @Produce json
+// @Param request body dto.RefreshTokenRequest true "Refresh token"
+// @Success 200 {object} helper.Response{data=dto.AuthResponse} "Token refreshed successfully"
+// @Failure 401 {object} helper.Response "Invalid refresh token"
+// @Router /auth/refresh [post]
 func (a *AuthHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 	var payload dto.RefreshTokenRequest
 	if err := helper.ReadJSON(w, r, &payload); err != nil {
@@ -80,6 +110,16 @@ func (a *AuthHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 	helper.SuccessResponse(w, "refresh token successfully", refreshToken)
 }
 
+// Logout docs
+// @Summary User logout
+// @Description Invalidate refresh token and logout user
+// @Tags Authentication
+// @Accept json
+// @Produce json
+// @Param request body dto.RefreshTokenRequest true "Refresh token to invalidate"
+// @Success 200 {object} helper.Response "Logout successful"
+// @Failure 400 {object} helper.Response "Invalid request data"
+// @Router /auth/logout [post]
 func (a *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	var payload dto.LogoutRequest
 	if err := helper.ReadJSON(w, r, &payload); err != nil {

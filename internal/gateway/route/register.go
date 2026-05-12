@@ -2,6 +2,7 @@ package route
 
 import (
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/gateway/middleware"
+	httpSwagger "github.com/swaggo/http-swagger"
 	"net/http"
 )
 
@@ -68,6 +69,13 @@ func WithOrderRoute(orderRoute *OrderRoute) Options {
 
 func (r *RegisterRoute) RegisterRoutes() http.Handler {
 	mux := http.NewServeMux()
+
+	mux.Handle("GET /swagger/*any", httpSwagger.Handler(httpSwagger.URL("/docs/swagger.json")))
+	mux.Handle("GET /docs/", http.StripPrefix("/docs/", http.FileServer(http.Dir("./docs"))))
+	mux.Handle("GET /api-docs", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "./docs/rapidoc.html")
+	}))
+
 	r.healthCheckRoute.HealthCheckRoutes(mux)
 	r.authRoute.AuthRoutes(mux)
 	r.userRoute.UserRoutes(mux)

@@ -12,6 +12,16 @@ type UserHandler struct {
 	userService service.UserService
 }
 
+// GetUserProfile docs
+// @Summary Get user profile
+// @Description Get current authenticated user's profile information
+// @Tags Users
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} helper.Response{data=dto.UserResponse} "Profile retrieved successfully"
+// @Failure 401 {object} helper.Response "Unauthorized"
+// @Failure 404 {object} helper.Response "User not found"
+// @Router /users/profile [get]
 func (u *UserHandler) GetUserProfile(w http.ResponseWriter, r *http.Request) {
 	id, exists := utils.UserIdFromContext(r.Context())
 	if !exists {
@@ -28,6 +38,18 @@ func (u *UserHandler) GetUserProfile(w http.ResponseWriter, r *http.Request) {
 	helper.SuccessResponse(w, "profile successfully retrieved", profile)
 }
 
+// UpdateUserProfile docs
+// @Summary Update user profile
+// @Description Update current authenticated user's profile information
+// @Tags Users
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body dto.UpdateProfileRequest true "Profile update data"
+// @Success 200 {object} helper.Response{data=dto.UserResponse} "Profile updated successfully"
+// @Failure 400 {object} helper.Response "Invalid request data"
+// @Failure 401 {object} helper.Response "Unauthorized"
+// @Router /users/profile [put]
 func (u *UserHandler) UpdateUserProfile(w http.ResponseWriter, r *http.Request) {
 	id, exists := utils.UserIdFromContext(r.Context())
 	if !exists {
