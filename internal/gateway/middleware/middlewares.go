@@ -87,8 +87,6 @@ func (m *Middleware) Admin(next http.Handler) http.Handler {
 			return
 		}
 
-		fmt.Println("hellllo")
-
 		if role != string(domain.Admin) {
 			helper.ForbiddenResponse(w, "Access Denied")
 			return
