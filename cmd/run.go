@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/saleh-ghazimoradi/GopherMarket/config"
 	"github.com/saleh-ghazimoradi/GopherMarket/infra/postgresql"
+	"github.com/saleh-ghazimoradi/GopherMarket/infra/publisher"
 	"github.com/saleh-ghazimoradi/GopherMarket/infra/redis"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/gateway/handler"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/gateway/middleware"
@@ -88,6 +89,11 @@ var runCmd = &cobra.Command{
 
 		/*----------Dependencies----------*/
 		middlewares := middleware.NewMiddleware(sLogger, cfg)
+		watermillPublisher, err := publisher.NewWatermillPublisher(ctx, cfg)
+		if err != nil {
+			sLogger.Error("failed to create publisher", "err", err)
+			return
+		}
 
 		/*----------Upload Strategy----------*/
 		var uploadStrategies uploadStrategy.UploadStrategy
@@ -108,7 +114,7 @@ var runCmd = &cobra.Command{
 		orderRepository := repository.NewOrderRepository(db, db)
 
 		/*----------Services----------*/
-		authService := service.NewAuthService(userRepository, cartRepository, tokenRepository, cfg)
+		authService := service.NewAuthService(userRepository, cartRepository, tokenRepository, watermillPublisher, cfg)
 		userService := service.NewUserService(userRepository)
 		categoryService := service.NewCategoryService(categoryRepository)
 		productService := service.NewProductService(productRepository, cacheRepository)
