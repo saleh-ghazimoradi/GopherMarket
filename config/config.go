@@ -21,6 +21,11 @@ type Config struct {
 	AWS         AWS
 	Upload      Upload
 	SMTP        SMTP
+	Event       Event
+}
+
+type Event struct {
+	UserLoggedIn string `env:"USER_LOGGED_IN"`
 }
 
 type Application struct {
