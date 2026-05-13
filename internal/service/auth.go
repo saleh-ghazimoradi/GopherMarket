@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/saleh-ghazimoradi/GopherMarket/config"
+	"github.com/saleh-ghazimoradi/GopherMarket/infra/publisher"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/domain"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/dto"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/repository"
@@ -22,6 +23,7 @@ type authService struct {
 	userRepository  repository.UserRepository
 	cartRepository  repository.CartRepository
 	tokenRepository repository.TokenRepository
+	publisher       publisher.Publisher
 	cfg             *config.Config
 }
 
@@ -115,6 +117,10 @@ func (a *authService) generateAuthResponse(ctx context.Context, user *domain.Use
 		return nil, fmt.Errorf("faield to create refresh token: %w", err)
 	}
 
+	if err := a.publisher.Publish(ctx, a.cfg.Event.UserLoggedIn, user, map[string]string{}); err != nil {
+		return nil, fmt.Errorf("faield to publish refresh token: %w", err)
+	}
+
 	return &dto.AuthResponse{
 		User: dto.UserResponse{
 			Id:        user.Id,
@@ -132,11 +138,12 @@ func (a *authService) generateAuthResponse(ctx context.Context, user *domain.Use
 	}, nil
 }
 
-func NewAuthService(userRepository repository.UserRepository, cartRepository repository.CartRepository, tokenRepository repository.TokenRepository, cfg *config.Config) AuthService {
+func NewAuthService(userRepository repository.UserRepository, cartRepository repository.CartRepository, tokenRepository repository.TokenRepository, publisher publisher.Publisher, cfg *config.Config) AuthService {
 	return &authService{
 		userRepository:  userRepository,
 		cartRepository:  cartRepository,
 		tokenRepository: tokenRepository,
+		publisher:       publisher,
 		cfg:             cfg,
 	}
 }
