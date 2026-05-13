@@ -10,6 +10,7 @@ help:
 	@echo "  make fmt      	 - Format all the code"
 	@echo "  make vet      	 - Run vet on all the codebase"
 	@echo "  make swagger    - Generate Swagger Docs"
+	@echo "  make graphql    	 - Generate graphql schema"
 
 docker-up:
 	docker compose up -d
@@ -46,7 +47,7 @@ swagger:
 	mkdir -p docs
 	swag init -g main.go -o docs --parseDependency --parseInternal --exclude .git,docker-compose.yml,infra
 
-graph:
+graphql:
 	go get github.com/99designs/gqlgen@latest
 	go run github.com/99designs/gqlgen generate
 
