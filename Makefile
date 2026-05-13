@@ -46,5 +46,8 @@ swagger:
 	mkdir -p docs
 	swag init -g main.go -o docs --parseDependency --parseInternal --exclude .git,docker-compose.yml,infra
 
+graph:
+	go get github.com/99designs/gqlgen@latest
+	go run github.com/99designs/gqlgen generate
 
 
