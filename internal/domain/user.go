@@ -15,7 +15,7 @@ const (
 type User struct {
 	Id        uint   `gorm:"primaryKey"`
 	Email     string `gorm:"uniqueIndex;not null"`
-	Password  string `gorm:"not null"`
+	Password  string `json:"-" gorm:"not null"`
 	FirstName string `gorm:"not null"`
 	LastName  string `gorm:"not null"`
 	Phone     string
