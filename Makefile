@@ -23,6 +23,9 @@ fmt:
 vet:
 	go vet ./...
 
+notifier: fmt vet
+	go run . notifier
+
 run: fmt vet
 	go run . run
 
