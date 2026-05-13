@@ -68,6 +68,10 @@ func (a *authService) Login(ctx context.Context, req *dto.LoginRequest) (*dto.Au
 		return nil, fmt.Errorf("invalid credentials")
 	}
 
+	if err := a.toPublish(ctx, user); err != nil {
+		return nil, fmt.Errorf("faield to publish user: %w", err)
+	}
+
 	return a.generateAuthResponse(ctx, user)
 }
 
@@ -101,6 +105,13 @@ func (a *authService) Logout(ctx context.Context, req *dto.LogoutRequest) error 
 	return nil
 }
 
+func (a *authService) toPublish(ctx context.Context, user *domain.User) error {
+	if err := a.publisher.Publish(ctx, a.cfg.Event.UserLoggedIn, user, map[string]string{}); err != nil {
+		return fmt.Errorf("faield to publish refresh token: %w", err)
+	}
+	return nil
+}
+
 func (a *authService) generateAuthResponse(ctx context.Context, user *domain.User) (*dto.AuthResponse, error) {
 	accessToken, refreshToken, err := utils.GenerateToken(a.cfg, user.Id, user.Email, string(user.Role))
 	if err != nil {
@@ -115,10 +126,6 @@ func (a *authService) generateAuthResponse(ctx context.Context, user *domain.Use
 
 	if err := a.tokenRepository.CreateToken(ctx, refreshTokenDomain); err != nil {
 		return nil, fmt.Errorf("faield to create refresh token: %w", err)
-	}
-
-	if err := a.publisher.Publish(ctx, a.cfg.Event.UserLoggedIn, user, map[string]string{}); err != nil {
-		return nil, fmt.Errorf("faield to publish refresh token: %w", err)
 	}
 
 	return &dto.AuthResponse{
