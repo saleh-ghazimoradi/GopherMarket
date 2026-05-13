@@ -1,0 +1,67 @@
+schema:
+  - internal/gateway/graph/schema/*.graphqls
+
+exec:
+  filename: internal/gateway/graph/generated.go
+  package: graph
+
+model:
+  filename: internal/gateway/graph/model/models_gen.go
+  package: model
+
+resolver:
+  layout: follow-schema
+  dir: internal/gateway/graph/resolver
+  package: resolver
+  filename_template: "{name}.resolvers.go"
+
+autobind:
+  - "github.com/saleh-ghazimoradi/GopherMarket/internal/dto"
+
+models:
+  User:
+    model: github.com/saleh-ghazimoradi/GopherMarket/internal/dto.UserResponse
+  AuthPayload:
+    model: github.com/saleh-ghazimoradi/GopherMarket/internal/dto.AuthResponse
+  Product:
+    model: github.com/saleh-ghazimoradi/GopherMarket/internal/dto.ProductResponse
+  Category:
+    model: github.com/saleh-ghazimoradi/GopherMarket/internal/dto.CategoryResponse
+  Cart:
+    model: github.com/saleh-ghazimoradi/GopherMarket/internal/dto.CartResponse
+  CartItem:
+    model: github.com/saleh-ghazimoradi/GopherMarket/internal/dto.CartItemResponse
+  Order:
+    model: github.com/saleh-ghazimoradi/GopherMarket/internal/dto.OrderResponse
+  OrderItem:
+    model: github.com/saleh-ghazimoradi/GopherMarket/internal/dto.OrderItemResponse
+  ProductImage:
+    model: github.com/saleh-ghazimoradi/GopherMarket/internal/dto.ProductImageResponse
+
+  RegisterInput:
+    model: github.com/saleh-ghazimoradi/GopherMarket/internal/dto.RegisterRequest
+  LoginInput:
+    model: github.com/saleh-ghazimoradi/GopherMarket/internal/dto.LoginRequest
+  LogoutInput:
+    model: github.com/saleh-ghazimoradi/GopherMarket/internal/dto.LogoutRequest
+  RefreshTokenInput:
+    model: github.com/saleh-ghazimoradi/GopherMarket/internal/dto.RefreshTokenRequest
+  UpdateProfileInput:
+    model: github.com/saleh-ghazimoradi/GopherMarket/internal/dto.UpdateProfileRequest
+  CreateCategoryInput:
+    model: github.com/saleh-ghazimoradi/GopherMarket/internal/dto.CreateCategoryRequest
+  UpdateCategoryInput:
+    model: github.com/saleh-ghazimoradi/GopherMarket/internal/dto.UpdateCategoryRequest
+  UpdateCartItemInput:
+    model: github.com/saleh-ghazimoradi/GopherMarket/internal/dto.UpdateCartItemRequest
+  CreateProductInput:
+    model: github.com/saleh-ghazimoradi/GopherMarket/internal/dto.CreateProductRequest
+  UpdateProductInput:
+    model: github.com/saleh-ghazimoradi/GopherMarket/internal/dto.UpdateProductRequest
+  AddToCartInput:
+    model: github.com/saleh-ghazimoradi/GopherMarket/internal/dto.AddToCartRequest
+  ID:
+    model: github.com/99designs/gqlgen/graphql.String
+  UInt:
+    model: github.com/99designs/gqlgen/graphql.Uint
+
