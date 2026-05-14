@@ -1,8 +1,66 @@
 package resolver
 
-// This file will not be regenerated automatically.
-//
-// It serves as dependency injection for your app, add any dependencies you require
-// here.
+import (
+	"github.com/saleh-ghazimoradi/GopherMarket/internal/service"
+	"strconv"
+)
 
-type Resolver struct{}
+type Resolver struct {
+	authService     service.AuthService
+	cartService     service.CartService
+	categoryService service.CategoryService
+	orderService    service.OrderService
+	productService  service.ProductService
+	userService     service.UserService
+}
+
+type Options func(*Resolver)
+
+func WithAuthService(authService service.AuthService) Options {
+	return func(r *Resolver) {
+		r.authService = authService
+	}
+}
+
+func WithCartService(cartService service.CartService) Options {
+	return func(r *Resolver) {
+		r.cartService = cartService
+	}
+}
+
+func WithCategoryService(categoryService service.CategoryService) Options {
+	return func(r *Resolver) {
+		r.categoryService = categoryService
+	}
+}
+
+func WithOrderService(orderService service.OrderService) Options {
+	return func(r *Resolver) {
+		r.orderService = orderService
+	}
+}
+
+func WithProductService(productService service.ProductService) Options {
+	return func(r *Resolver) {
+		r.productService = productService
+	}
+}
+
+func WithUserService(userService service.UserService) Options {
+	return func(r *Resolver) {
+		r.userService = userService
+	}
+}
+
+func (r *Resolver) parseId(id string) (uint, error) {
+	parsed, err := strconv.ParseUint(id, 10, 32)
+	return uint(parsed), err
+}
+
+func NewResolver(opts ...Options) *Resolver {
+	resolver := &Resolver{}
+	for _, opt := range opts {
+		opt(resolver)
+	}
+	return resolver
+}
