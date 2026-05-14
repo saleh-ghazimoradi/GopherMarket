@@ -88,7 +88,7 @@ type ComplexityRoot struct {
 		DeleteCategory func(childComplexity int, id string) int
 		DeleteProduct  func(childComplexity int, id string) int
 		Login          func(childComplexity int, input dto.LoginRequest) int
-		Logout         func(childComplexity int, input dto.RefreshTokenRequest) int
+		Logout         func(childComplexity int, input dto.LogoutRequest) int
 		RefreshToken   func(childComplexity int, input dto.RefreshTokenRequest) int
 		Register       func(childComplexity int, input dto.RegisterRequest) int
 		RemoveFromCart func(childComplexity int, id string) int
@@ -201,7 +201,7 @@ type MutationResolver interface {
 	Register(ctx context.Context, input dto.RegisterRequest) (*dto.AuthResponse, error)
 	Login(ctx context.Context, input dto.LoginRequest) (*dto.AuthResponse, error)
 	RefreshToken(ctx context.Context, input dto.RefreshTokenRequest) (*dto.AuthResponse, error)
-	Logout(ctx context.Context, input dto.RefreshTokenRequest) (bool, error)
+	Logout(ctx context.Context, input dto.LogoutRequest) (bool, error)
 	UpdateProfile(ctx context.Context, input dto.UpdateProfileRequest) (*dto.UserResponse, error)
 	CreateCategory(ctx context.Context, input dto.CreateCategoryRequest) (*dto.CategoryResponse, error)
 	UpdateCategory(ctx context.Context, id string, input dto.UpdateCategoryRequest) (*dto.CategoryResponse, error)
@@ -467,7 +467,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.ComplexityRoot.Mutation.Logout(childComplexity, args["input"].(dto.RefreshTokenRequest)), true
+		return e.ComplexityRoot.Mutation.Logout(childComplexity, args["input"].(dto.LogoutRequest)), true
 	case "Mutation.refreshToken":
 		if e.ComplexityRoot.Mutation.RefreshToken == nil {
 			break
@@ -920,6 +920,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputCreateCategoryInput,
 		ec.unmarshalInputCreateProductInput,
 		ec.unmarshalInputLoginInput,
+		ec.unmarshalInputLogoutInput,
 		ec.unmarshalInputRefreshTokenInput,
 		ec.unmarshalInputRegisterInput,
 		ec.unmarshalInputUpdateCartItemInput,
@@ -1449,8 +1450,8 @@ func (ec *executionContext) field_Mutation_logout_args(ctx context.Context, rawA
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input",
-		func(ctx context.Context, v any) (dto.RefreshTokenRequest, error) {
-			return ec.unmarshalNRefreshTokenInput2githubᚗcomᚋsalehᚑghazimoradiᚋGopherMarketᚋinternalᚋdtoᚐRefreshTokenRequest(ctx, v)
+		func(ctx context.Context, v any) (dto.LogoutRequest, error) {
+			return ec.unmarshalNLogoutInput2githubᚗcomᚋsalehᚑghazimoradiᚋGopherMarketᚋinternalᚋdtoᚐLogoutRequest(ctx, v)
 		})
 	if err != nil {
 		return nil, err
@@ -2383,7 +2384,7 @@ func (ec *executionContext) _Mutation_logout(ctx context.Context, field graphql.
 		},
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Mutation().Logout(ctx, fc.Args["input"].(dto.RefreshTokenRequest))
+			return ec.Resolvers.Mutation().Logout(ctx, fc.Args["input"].(dto.LogoutRequest))
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
@@ -5666,6 +5667,36 @@ func (ec *executionContext) unmarshalInputLoginInput(ctx context.Context, obj an
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputLogoutInput(ctx context.Context, obj any) (dto.LogoutRequest, error) {
+	var it dto.LogoutRequest
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"refresh_token"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "refresh_token":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refresh_token"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RefreshToken = data
+		}
+	}
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputRefreshTokenInput(ctx context.Context, obj any) (dto.RefreshTokenRequest, error) {
 	var it dto.RefreshTokenRequest
 	if obj == nil {
@@ -7984,6 +8015,11 @@ func (ec *executionContext) marshalNInt2ᚖint(ctx context.Context, sel ast.Sele
 
 func (ec *executionContext) unmarshalNLoginInput2githubᚗcomᚋsalehᚑghazimoradiᚋGopherMarketᚋinternalᚋdtoᚐLoginRequest(ctx context.Context, v any) (dto.LoginRequest, error) {
 	res, err := ec.unmarshalInputLoginInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNLogoutInput2githubᚗcomᚋsalehᚑghazimoradiᚋGopherMarketᚋinternalᚋdtoᚐLogoutRequest(ctx context.Context, v any) (dto.LogoutRequest, error) {
+	res, err := ec.unmarshalInputLogoutInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
