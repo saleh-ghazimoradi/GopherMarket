@@ -26,6 +26,7 @@ type ProductService interface {
 	UpdateProduct(ctx context.Context, id uint, req *dto.UpdateProductRequest) (*dto.ProductResponse, error)
 	DeleteProduct(ctx context.Context, id uint) error
 	AddProductImage(ctx context.Context, productId uint, url, altText string) error
+	SearchProducts(ctx context.Context, req *dto.SearchProductsRequest) ([]*dto.ProductSearchResult, *helper.PaginatedMeta, error)
 }
 
 type productService struct {
@@ -171,6 +172,36 @@ func (p *productService) AddProductImage(ctx context.Context, productId uint, ur
 	}
 
 	return p.productRepository.CreateProductImage(ctx, image)
+}
+
+func (p *productService) SearchProducts(ctx context.Context, req *dto.SearchProductsRequest) ([]*dto.ProductSearchResult, *helper.PaginatedMeta, error) {
+	if req.Page < 1 {
+		req.Page = 1
+	}
+	if req.Limit < 1 {
+		req.Limit = 10
+	}
+
+	offset := (req.Page - 1) * req.Limit
+
+	products, ranks, total, err := p.productRepository.SearchProducts(ctx, req, offset, req.Limit)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	results := make([]*dto.ProductSearchResult, len(products))
+	for i := range products {
+		results[i] = &dto.ProductSearchResult{
+			// Use the existing helper (renamed for clarity if you prefer, but here it's toProductResp)
+			ProductResponse: *p.toProductResp(products[i]),
+			Rank:            ranks[i],
+		}
+	}
+
+	// Reuse buildMeta – eliminates duplicate pagination arithmetic
+	meta := p.buildMeta(req.Page, req.Limit, total)
+
+	return results, meta, nil
 }
 
 func (p *productService) toProductResp(product *domain.Product) *dto.ProductResponse {
