@@ -47,6 +47,10 @@ func validateProductSKU(v *helper.Validator, sku string) {
 	v.Check(helper.NotBlank(sku), "sku", "Product sku must be provided")
 }
 
+func validateQuery(v *helper.Validator, query string) {
+	v.Check(helper.MinChars(query, 1), "query", "Query must be at least 1 characters")
+}
+
 func ValidateRegisterRequest(v *helper.Validator, req *RegisterRequest) {
 	validateFirstNameAndLastName(v, req.FirstName)
 	validateFirstNameAndLastName(v, req.LastName)
@@ -106,5 +110,11 @@ func ValidateUpdateProductRequest(v *helper.Validator, req *UpdateProductRequest
 	}
 	if req.Stock != nil {
 		validateStock(v, *req.Stock)
+	}
+}
+
+func ValidateQuery(v *helper.Validator, req *SearchProductsRequest) {
+	if req.Query != "" {
+		validateQuery(v, req.Query)
 	}
 }
