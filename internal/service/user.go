@@ -9,12 +9,21 @@ import (
 )
 
 type UserService interface {
+	GetUserById(ctx context.Context, id uint) (*dto.UserResponse, error)
 	GetUserProfile(ctx context.Context, id uint) (*dto.UserResponse, error)
 	UpdateUserProfile(ctx context.Context, id uint, req *dto.UpdateProfileRequest) (*dto.UserResponse, error)
 }
 
 type userService struct {
 	userRepository repository.UserRepository
+}
+
+func (u *userService) GetUserById(ctx context.Context, id uint) (*dto.UserResponse, error) {
+	user, err := u.userRepository.GetUserById(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
+	return u.toUserResp(user), nil
 }
 
 func (u *userService) GetUserProfile(ctx context.Context, id uint) (*dto.UserResponse, error) {
