@@ -9,7 +9,7 @@ import (
 
 type CategoryRepository interface {
 	CreateCategory(ctx context.Context, category *domain.Category) error
-	GetCategoryByID(ctx context.Context, id uint) (*domain.Category, error)
+	GetCategoryById(ctx context.Context, id uint) (*domain.Category, error)
 	GetCategories(ctx context.Context) ([]*domain.Category, error)
 	UpdateCategory(ctx context.Context, category *domain.Category) error
 	DeleteCategory(ctx context.Context, id uint) error
@@ -25,7 +25,7 @@ func (c *categoryRepository) CreateCategory(ctx context.Context, category *domai
 	return c.dbWrite.WithContext(ctx).Create(category).Error
 }
 
-func (c *categoryRepository) GetCategoryByID(ctx context.Context, id uint) (*domain.Category, error) {
+func (c *categoryRepository) GetCategoryById(ctx context.Context, id uint) (*domain.Category, error) {
 	var category domain.Category
 	if err := c.dbRead.WithContext(ctx).First(&category, id).Error; err != nil {
 		switch {
