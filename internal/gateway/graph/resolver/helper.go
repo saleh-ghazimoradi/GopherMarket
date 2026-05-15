@@ -5,7 +5,13 @@ import (
 	"errors"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/domain"
 	"github.com/saleh-ghazimoradi/GopherMarket/utils"
+	"strconv"
 )
+
+func parseId(id string) (uint, error) {
+	parsed, err := strconv.ParseUint(id, 10, 32)
+	return uint(parsed), err
+}
 
 func getPagingNumbers(page, limit *int) (int, int) {
 	p, l := 0, 0
