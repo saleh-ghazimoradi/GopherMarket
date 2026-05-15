@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/saleh-ghazimoradi/GopherMarket/internal/domain"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/dto"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/gateway/graph"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/gateway/graph/model"
@@ -83,12 +82,12 @@ func (r *mutationResolver) UpdateProfile(ctx context.Context, input dto.UpdatePr
 
 // CreateCategory is the resolver for the createCategory field.
 func (r *mutationResolver) CreateCategory(ctx context.Context, input dto.CreateCategoryRequest) (*dto.CategoryResponse, error) {
-	role, exists := utils.RoleFromContext(ctx)
-	if !exists {
-		return nil, errors.New("unauthorized")
+	admin, err := isAdmin(ctx)
+	if err != nil {
+		return nil, err
 	}
 
-	if role != string(domain.Admin) {
+	if !admin {
 		return nil, errors.New("access denied")
 	}
 
@@ -102,12 +101,12 @@ func (r *mutationResolver) CreateCategory(ctx context.Context, input dto.CreateC
 
 // UpdateCategory is the resolver for the updateCategory field.
 func (r *mutationResolver) UpdateCategory(ctx context.Context, id string, input dto.UpdateCategoryRequest) (*dto.CategoryResponse, error) {
-	role, exists := utils.RoleFromContext(ctx)
-	if !exists {
-		return nil, errors.New("unauthorized")
+	admin, err := isAdmin(ctx)
+	if err != nil {
+		return nil, err
 	}
 
-	if role != string(domain.Admin) {
+	if !admin {
 		return nil, errors.New("access denied")
 	}
 
@@ -143,12 +142,12 @@ func (r *mutationResolver) UpdateCategory(ctx context.Context, id string, input 
 
 // DeleteCategory is the resolver for the deleteCategory field.
 func (r *mutationResolver) DeleteCategory(ctx context.Context, id string) (bool, error) {
-	role, exists := utils.RoleFromContext(ctx)
-	if !exists {
-		return false, errors.New("unauthorized")
+	admin, err := isAdmin(ctx)
+	if err != nil {
+		return false, err
 	}
 
-	if role != string(domain.Admin) {
+	if !admin {
 		return false, errors.New("access denied")
 	}
 
@@ -166,12 +165,12 @@ func (r *mutationResolver) DeleteCategory(ctx context.Context, id string) (bool,
 
 // CreateProduct is the resolver for the createProduct field.
 func (r *mutationResolver) CreateProduct(ctx context.Context, input dto.CreateProductRequest) (*dto.ProductResponse, error) {
-	role, exists := utils.RoleFromContext(ctx)
-	if !exists {
-		return nil, errors.New("unauthorized")
+	admin, err := isAdmin(ctx)
+	if err != nil {
+		return nil, err
 	}
 
-	if role != string(domain.Admin) {
+	if !admin {
 		return nil, errors.New("access denied")
 	}
 
@@ -185,12 +184,12 @@ func (r *mutationResolver) CreateProduct(ctx context.Context, input dto.CreatePr
 
 // UpdateProduct is the resolver for the updateProduct field.
 func (r *mutationResolver) UpdateProduct(ctx context.Context, id string, input dto.UpdateProductRequest) (*dto.ProductResponse, error) {
-	role, exists := utils.RoleFromContext(ctx)
-	if !exists {
-		return nil, errors.New("unauthorized")
+	admin, err := isAdmin(ctx)
+	if err != nil {
+		return nil, err
 	}
 
-	if role != string(domain.Admin) {
+	if !admin {
 		return nil, errors.New("access denied")
 	}
 
@@ -238,6 +237,15 @@ func (r *mutationResolver) UpdateProduct(ctx context.Context, id string, input d
 
 // DeleteProduct is the resolver for the deleteProduct field.
 func (r *mutationResolver) DeleteProduct(ctx context.Context, id string) (bool, error) {
+	admin, err := isAdmin(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	if !admin {
+		return false, errors.New("access denied")
+	}
+
 	productId, err := parseId(id)
 	if err != nil {
 		return false, fmt.Errorf("parse product id error: %w", err)
