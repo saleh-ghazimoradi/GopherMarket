@@ -15,6 +15,7 @@ type RegisterRoute struct {
 	productRoute     *ProductRoute
 	cartRoute        *CartRoute
 	orderRoute       *OrderRoute
+	GraphQLRoute     *GraphQLRoute
 }
 
 type Options func(*RegisterRoute)
@@ -67,6 +68,12 @@ func WithOrderRoute(orderRoute *OrderRoute) Options {
 	}
 }
 
+func WithGraphQLRoute(graphQLRoute *GraphQLRoute) Options {
+	return func(r *RegisterRoute) {
+		r.GraphQLRoute = graphQLRoute
+	}
+}
+
 func (r *RegisterRoute) RegisterRoutes() http.Handler {
 	mux := http.NewServeMux()
 
@@ -83,6 +90,7 @@ func (r *RegisterRoute) RegisterRoutes() http.Handler {
 	r.productRoute.ProductRoutes(mux)
 	r.cartRoute.CartRoutes(mux)
 	r.orderRoute.OrderRoute(mux)
+	r.GraphQLRoute.GraphQLRoutes(mux)
 	return r.middleware.Recover(r.middleware.Logging(r.middleware.CORS(mux)))
 }
 
