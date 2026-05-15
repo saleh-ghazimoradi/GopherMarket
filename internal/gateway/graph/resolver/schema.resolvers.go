@@ -9,8 +9,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/saleh-ghazimoradi/GopherMarket/internal/domain"
 
+	"github.com/saleh-ghazimoradi/GopherMarket/internal/domain"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/dto"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/gateway/graph"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/gateway/graph/model"
@@ -59,12 +59,26 @@ func (r *mutationResolver) UpdateProfile(ctx context.Context, input dto.UpdatePr
 		return nil, errors.New("unauthorized")
 	}
 
-	user, err := r.userService.UpdateUserProfile(ctx, userId, &input)
+	user, err := r.userService.GetUserById(ctx, userId)
+
+	if input.FirstName != nil {
+		user.FirstName = *input.FirstName
+	}
+
+	if input.LastName != nil {
+		user.LastName = *input.LastName
+	}
+
+	if input.Phone != nil {
+		user.Phone = *input.Phone
+	}
+
+	updateUser, err := r.userService.UpdateUserProfile(ctx, userId, &input)
 	if err != nil {
 		return nil, fmt.Errorf("update user error: %w", err)
 	}
 
-	return user, nil
+	return updateUser, nil
 }
 
 // CreateCategory is the resolver for the createCategory field.
@@ -97,17 +111,34 @@ func (r *mutationResolver) UpdateCategory(ctx context.Context, id string, input 
 		return nil, errors.New("access denied")
 	}
 
-	categoryId, err := r.parseId(id)
+	categoryId, err := parseId(id)
 	if err != nil {
 		return nil, fmt.Errorf("parse category id error: %w", err)
 	}
 
-	category, err := r.categoryService.UpdateCategory(ctx, categoryId, &input)
+	category, err := r.categoryService.GetCategory(ctx, categoryId)
+	if err != nil {
+		return nil, fmt.Errorf("get category error: %w", err)
+	}
+
+	if input.Name != nil {
+		category.Name = *input.Name
+	}
+
+	if input.Description != nil {
+		category.Description = *input.Description
+	}
+
+	if input.IsActive != nil {
+		category.IsActive = *input.IsActive
+	}
+
+	updatedCategory, err := r.categoryService.UpdateCategory(ctx, categoryId, &input)
 	if err != nil {
 		return nil, fmt.Errorf("update category error: %w", err)
 	}
 
-	return category, nil
+	return updatedCategory, nil
 }
 
 // DeleteCategory is the resolver for the deleteCategory field.
@@ -121,7 +152,7 @@ func (r *mutationResolver) DeleteCategory(ctx context.Context, id string) (bool,
 		return false, errors.New("access denied")
 	}
 
-	categoryId, err := r.parseId(id)
+	categoryId, err := parseId(id)
 	if err != nil {
 		return false, fmt.Errorf("parse category id error: %w", err)
 	}
@@ -163,23 +194,51 @@ func (r *mutationResolver) UpdateProduct(ctx context.Context, id string, input d
 		return nil, errors.New("access denied")
 	}
 
-	productId, err := r.parseId(id)
+	productId, err := parseId(id)
 	if err != nil {
 		return nil, fmt.Errorf("parse product id error: %w", err)
 	}
 
-	product, err := r.productService.UpdateProduct(ctx, productId, &input)
+	product, err := r.productService.GetProductById(ctx, productId)
+	if err != nil {
+		return nil, fmt.Errorf("get product error: %w", err)
+	}
+
+	if input.CategoryId != nil {
+		product.CategoryId = *input.CategoryId
+	}
+
+	if input.Name != nil {
+		product.Name = *input.Name
+	}
+
+	if input.Price != nil {
+		product.Price = *input.Price
+	}
+
+	if input.Description != nil {
+		product.Description = *input.Description
+	}
+
+	if input.IsActive != nil {
+		product.IsActive = *input.IsActive
+	}
+
+	if input.Stock != nil {
+		product.Stock = *input.Stock
+	}
+
+	updatedProduct, err := r.productService.UpdateProduct(ctx, productId, &input)
 	if err != nil {
 		return nil, fmt.Errorf("update product error: %w", err)
 	}
 
-	return product, nil
+	return updatedProduct, nil
 }
 
 // DeleteProduct is the resolver for the deleteProduct field.
 func (r *mutationResolver) DeleteProduct(ctx context.Context, id string) (bool, error) {
-
-	productId, err := r.parseId(id)
+	productId, err := parseId(id)
 	if err != nil {
 		return false, fmt.Errorf("parse product id error: %w", err)
 	}
@@ -213,7 +272,7 @@ func (r *mutationResolver) UpdateCartItem(ctx context.Context, id string, input 
 		return nil, errors.New("unauthorized")
 	}
 
-	itemId, err := r.parseId(id)
+	itemId, err := parseId(id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse item id: %w", err)
 	}
@@ -233,7 +292,7 @@ func (r *mutationResolver) RemoveFromCart(ctx context.Context, id string) (bool,
 		return false, errors.New("unauthorized")
 	}
 
-	cartId, err := r.parseId(id)
+	cartId, err := parseId(id)
 	if err != nil {
 		return false, fmt.Errorf("failed to parse cart id: %w", err)
 	}
@@ -303,7 +362,7 @@ func (r *queryResolver) Products(ctx context.Context, page *int, limit *int) (*m
 
 // Product is the resolver for the product field.
 func (r *queryResolver) Product(ctx context.Context, id string) (*dto.ProductResponse, error) {
-	productId, err := r.parseId(id)
+	productId, err := parseId(id)
 	if err != nil {
 		return nil, fmt.Errorf("parse product id error: %w", err)
 	}
@@ -383,7 +442,7 @@ func (r *queryResolver) Order(ctx context.Context, id string) (*dto.OrderRespons
 		return nil, errors.New("unauthorized")
 	}
 
-	orderId, err := r.parseId(id)
+	orderId, err := parseId(id)
 	if err != nil {
 		return nil, fmt.Errorf("parse order id error: %w", err)
 	}
