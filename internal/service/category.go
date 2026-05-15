@@ -38,7 +38,7 @@ func (c *categoryService) GetCategory(ctx context.Context, id uint) (*dto.Catego
 	if err != nil {
 		return nil, fmt.Errorf("failed to get category by id: %w", err)
 	}
-	
+
 	return c.toCategoryReps(category), nil
 }
 
