@@ -7,6 +7,8 @@ import (
 	"github.com/saleh-ghazimoradi/GopherMarket/infra/postgresql"
 	"github.com/saleh-ghazimoradi/GopherMarket/infra/publisher"
 	"github.com/saleh-ghazimoradi/GopherMarket/infra/redis"
+	graphqlHandler "github.com/saleh-ghazimoradi/GopherMarket/internal/gateway/graph/handler"
+	"github.com/saleh-ghazimoradi/GopherMarket/internal/gateway/graph/resolver"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/gateway/handler"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/gateway/middleware"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/gateway/route"
@@ -122,6 +124,19 @@ var runCmd = &cobra.Command{
 		cartService := service.NewCartService(cartRepository, cartItemRepository, productRepository)
 		orderService := service.NewOrderService(orderRepository, cartRepository, cartItemRepository, productRepository, db)
 
+		/*----------GraphQL----------*/
+		graphQLResolver := resolver.NewResolver(
+			resolver.WithAuthService(authService),
+			resolver.WithUserService(userService),
+			resolver.WithCategoryService(categoryService),
+			resolver.WithProductService(productService),
+			resolver.WithCartService(cartService),
+			resolver.WithOrderService(orderService),
+		)
+
+		gqlHandler := graphqlHandler.NewGraphQLHandler(graphQLResolver)
+		graphqlRoute := route.NewGraphQLRoute(gqlHandler, middlewares)
+
 		/*----------Handlers----------*/
 		healthHandler := handler.NewHealthCheckHandler(cfg)
 		authHandler := handler.NewAuthHandler(authService)
@@ -150,6 +165,7 @@ var runCmd = &cobra.Command{
 			route.WithProductRoute(productRoute),
 			route.WithCartRoute(cartRoute),
 			route.WithOrderRoute(orderRoute),
+			route.WithGraphQLRoute(graphqlRoute),
 		)
 
 		/*----------HTTP Server----------*/
