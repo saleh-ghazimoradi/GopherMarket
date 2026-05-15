@@ -14,6 +14,7 @@ type ProductRoute struct {
 func (p *ProductRoute) ProductRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /v1/products", p.productHandler.GetProducts)
 	mux.HandleFunc("GET /v1/products/{id}", p.productHandler.GetProduct)
+	mux.HandleFunc("GET /v1/products/search", p.productHandler.SearchProducts)
 	mux.Handle("POST /v1/products", p.middleware.WrapAdmin(p.productHandler.CreateProduct))
 	mux.Handle("PUT /v1/products/{id}", p.middleware.WrapAdmin(p.productHandler.UpdateProduct))
 	mux.Handle("DELETE /v1/products/{id}", p.middleware.WrapAdmin(p.productHandler.DeleteProduct))
