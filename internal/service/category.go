@@ -10,6 +10,7 @@ import (
 
 type CategoryService interface {
 	CreateCategory(ctx context.Context, req *dto.CreateCategoryRequest) (*dto.CategoryResponse, error)
+	GetCategory(ctx context.Context, id uint) (*dto.CategoryResponse, error)
 	GetCategories(ctx context.Context) ([]*dto.CategoryResponse, error)
 	UpdateCategory(ctx context.Context, id uint, req *dto.UpdateCategoryRequest) (*dto.CategoryResponse, error)
 	DeleteCategory(ctx context.Context, id uint) error
@@ -32,6 +33,15 @@ func (c *categoryService) CreateCategory(ctx context.Context, req *dto.CreateCat
 	return c.toCategoryReps(category), nil
 }
 
+func (c *categoryService) GetCategory(ctx context.Context, id uint) (*dto.CategoryResponse, error) {
+	category, err := c.categoryRepository.GetCategoryById(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get category by id: %w", err)
+	}
+	
+	return c.toCategoryReps(category), nil
+}
+
 func (c *categoryService) GetCategories(ctx context.Context) ([]*dto.CategoryResponse, error) {
 	categories, err := c.categoryRepository.GetCategories(ctx)
 	if err != nil {
@@ -47,7 +57,7 @@ func (c *categoryService) GetCategories(ctx context.Context) ([]*dto.CategoryRes
 }
 
 func (c *categoryService) UpdateCategory(ctx context.Context, id uint, req *dto.UpdateCategoryRequest) (*dto.CategoryResponse, error) {
-	category, err := c.categoryRepository.GetCategoryByID(ctx, id)
+	category, err := c.categoryRepository.GetCategoryById(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get category by id: %w", err)
 	}
