@@ -2,7 +2,6 @@ package resolver
 
 import (
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/service"
-	"strconv"
 )
 
 type Resolver struct {
@@ -50,11 +49,6 @@ func WithUserService(userService service.UserService) Options {
 	return func(r *Resolver) {
 		r.userService = userService
 	}
-}
-
-func (r *Resolver) parseId(id string) (uint, error) {
-	parsed, err := strconv.ParseUint(id, 10, 32)
-	return uint(parsed), err
 }
 
 func NewResolver(opts ...Options) *Resolver {

@@ -20,9 +20,9 @@ input LogoutInput {
 }
 
 input UpdateProfileInput {
-    first_name: String!
-    last_name: String!
-    phone: String!
+    first_name: String
+    last_name: String
+    phone: String
 }
 
 input CreateCategoryInput {
@@ -31,8 +31,8 @@ input CreateCategoryInput {
 }
 
 input UpdateCategoryInput {
-    name: String!
-    description: String!
+    name: String
+    description: String
     is_active: Boolean
 }
 
@@ -46,11 +46,11 @@ input CreateProductInput {
 }
 
 input UpdateProductInput {
-    category_id: UInt!
-    name: String!
-    description: String!
-    price: Float!
-    stock: Int!
+    category_id: UInt
+    name: String
+    description: String
+    price: Float
+    stock: Int
     is_active: Boolean
 }
 
