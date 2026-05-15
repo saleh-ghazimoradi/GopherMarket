@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/dto"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/helper"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/service"
@@ -208,6 +209,87 @@ func (p *ProductHandler) UploadProductImage(w http.ResponseWriter, r *http.Reque
 	}
 
 	helper.CreatedResponse(w, "product image successfully uploaded", url)
+}
+
+// SearchProducts docs
+// @Summary Search products
+// @Description Search products using full-text search with ranking
+// @Tags Products
+// @Produce json
+// @Param q query string true "Search query"
+// @Param page query int false "Page number" default(1)
+// @Param limit query int false "Items per page" default(10)
+// @Param category_id query int false "Filter by category ID"
+// @Param min_price query number false "Minimum price filter"
+// @Param max_price query number false "Maximum price filter"
+// @Success 200 {object} helper.PaginatedResponse{data=[]dto.ProductSearchResult} "Search results"
+// @Failure 400 {object} helper.Response "Invalid search query"
+// @Failure 500 {object} helper.Response "Internal server error"
+// @Router /products/search [get]
+func (p *ProductHandler) SearchProducts(w http.ResponseWriter, r *http.Request) {
+	payload, err := bindSearchProductsQuery(r)
+	if err != nil {
+		helper.BadRequestResponse(w, "Invalid query parameters", err)
+		return
+	}
+
+	v := helper.NewValidator()
+	dto.ValidateQuery(v, payload)
+	if !v.Valid() {
+		helper.FailedValidationResponse(w, "Search parameters are not valid")
+		return
+	}
+
+	result, meta, err := p.productService.SearchProducts(r.Context(), payload)
+	if err != nil {
+		helper.InternalServerError(w, "Failed to search products", err)
+		return
+	}
+
+	helper.PaginatedSuccessResponse(w, "Products successfully retrieved", result, *meta)
+}
+
+func bindSearchProductsQuery(r *http.Request) (*dto.SearchProductsRequest, error) {
+	q := r.URL.Query()
+
+	req := &dto.SearchProductsRequest{
+		Query: q.Get("q"),
+	}
+
+	if page, err := strconv.Atoi(q.Get("page")); err == nil {
+		req.Page = page
+	}
+
+	if limit, err := strconv.Atoi(q.Get("limit")); err == nil {
+		req.Limit = limit
+	}
+
+	if catStr := q.Get("category_id"); catStr != "" {
+		catID, err := strconv.ParseUint(catStr, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("invalid category_id: %w", err)
+		}
+		cat := uint(catID)
+		req.CategoryId = &cat
+	}
+
+	if minStr := q.Get("min_price"); minStr != "" {
+		minPrice, err := strconv.ParseFloat(minStr, 64)
+		if err != nil {
+			return nil, fmt.Errorf("invalid min_price: %w", err)
+		}
+		req.MinPrice = &minPrice
+	}
+
+	if maxStr := q.Get("max_price"); maxStr != "" {
+		maxPrice, err := strconv.ParseFloat(maxStr, 64)
+		if err != nil {
+			return nil, fmt.Errorf("invalid max_price: %w", err)
+		}
+		req.MaxPrice = &maxPrice
+	}
+
+	return req, nil
 }
 
 func NewProductHandler(productService service.ProductService, uploadService service.UploadService) *ProductHandler {
