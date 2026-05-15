@@ -166,6 +166,37 @@ definitions:
       updated_at:
         type: string
     type: object
+  dto.ProductSearchResult:
+    properties:
+      category:
+        $ref: '#/definitions/dto.CategoryResponse'
+      category_id:
+        type: integer
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      images:
+        items:
+          $ref: '#/definitions/dto.ProductImageResponse'
+        type: array
+      is_active:
+        type: boolean
+      name:
+        type: string
+      price:
+        type: number
+      rank:
+        type: number
+      sku:
+        type: string
+      stock:
+        type: integer
+      updated_at:
+        type: string
+    type: object
   dto.RefreshTokenRequest:
     properties:
       refresh_token:
@@ -1023,6 +1054,62 @@ paths:
       security:
       - BearerAuth: []
       summary: Upload product image
+      tags:
+      - Products
+  /products/search:
+    get:
+      description: Search products using full-text search with ranking
+      parameters:
+      - description: Search query
+        in: query
+        name: q
+        required: true
+        type: string
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      - description: Filter by category ID
+        in: query
+        name: category_id
+        type: integer
+      - description: Minimum price filter
+        in: query
+        name: min_price
+        type: number
+      - description: Maximum price filter
+        in: query
+        name: max_price
+        type: number
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Search results
+          schema:
+            allOf:
+            - $ref: '#/definitions/helper.PaginatedResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.ProductSearchResult'
+                  type: array
+              type: object
+        "400":
+          description: Invalid search query
+          schema:
+            $ref: '#/definitions/helper.Response'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/helper.Response'
+      summary: Search products
       tags:
       - Products
   /users/profile:
