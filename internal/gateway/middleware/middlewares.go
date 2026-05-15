@@ -96,6 +96,25 @@ func (m *Middleware) Admin(next http.Handler) http.Handler {
 	})
 }
 
+func (m *Middleware) GraphQLAuth(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		authorization := r.Header.Get("Authorization")
+		if authorization != "" {
+			tokenParts := strings.Split(authorization, " ")
+			if len(tokenParts) == 2 && tokenParts[0] == "Bearer" {
+				if claims, err := utils.ValidateToken(tokenParts[1], m.cfg.JWT.Secret); err == nil {
+					ctx := r.Context()
+					ctx = utils.WithUserId(ctx, claims.UserId)
+					ctx = utils.WithEmailKey(ctx, claims.Email)
+					ctx = utils.WithRoleKey(ctx, claims.Role)
+					r = r.WithContext(ctx)
+				}
+			}
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 func (m *Middleware) WrapAuth(handlerFunc http.HandlerFunc) http.Handler {
 	return m.Authenticate(handlerFunc)
 }
