@@ -12,11 +12,6 @@ import (
 	"github.com/saleh-ghazimoradi/GopherMarket/pkg/awsCfg"
 )
 
-type Publisher interface {
-	Publish(ctx context.Context, eventType string, payload any, metadata map[string]string) error
-	Close() error
-}
-
 type watermillPublisher struct {
 	publisher message.Publisher
 	queueName string
