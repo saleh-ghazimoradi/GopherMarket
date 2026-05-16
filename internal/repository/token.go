@@ -11,6 +11,7 @@ type TokenRepository interface {
 	CreateToken(ctx context.Context, token *domain.RefreshToken) error
 	GetValidRefreshToken(ctx context.Context, token string) (*domain.RefreshToken, error)
 	DeleteTokenById(ctx context.Context, id uint) error
+	DeleteAllTokensByUserId(ctx context.Context, userId uint) error
 	DeleteToken(ctx context.Context, token string) error
 	WithTx(tx *gorm.DB) TokenRepository
 }
@@ -38,10 +39,12 @@ func (t *tokenRepository) DeleteTokenById(ctx context.Context, id uint) error {
 	return t.dbWrite.WithContext(ctx).Delete(&domain.RefreshToken{}, id).Error
 }
 
+func (t *tokenRepository) DeleteAllTokensByUserId(ctx context.Context, userId uint) error {
+	return t.dbWrite.WithContext(ctx).Where("user_id = ?", userId).Delete(&domain.RefreshToken{}).Error
+}
+
 func (t *tokenRepository) DeleteToken(ctx context.Context, token string) error {
-	return t.dbWrite.WithContext(ctx).
-		Where("token = ?", token).
-		Delete(&domain.RefreshToken{}).Error
+	return t.dbWrite.WithContext(ctx).Where("token = ?", token).Delete(&domain.RefreshToken{}).Error
 }
 
 func (t *tokenRepository) WithTx(tx *gorm.DB) TokenRepository {
