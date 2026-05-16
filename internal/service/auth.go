@@ -2,29 +2,38 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/saleh-ghazimoradi/GopherMarket/config"
 	"github.com/saleh-ghazimoradi/GopherMarket/infra/publisher"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/domain"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/dto"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/repository"
+	"github.com/saleh-ghazimoradi/GopherMarket/pkg/oauth"
 	"github.com/saleh-ghazimoradi/GopherMarket/utils"
+	"log/slog"
 	"time"
 )
 
 type AuthService interface {
 	Register(ctx context.Context, req *dto.RegisterRequest) (*dto.AuthResponse, error)
 	Login(ctx context.Context, req *dto.LoginRequest) (*dto.AuthResponse, error)
+	GoogleLogin(ctx context.Context, req *dto.GoogleLoginRequest) (*dto.AuthResponse, error)
+	ForgotPassword(ctx context.Context, req *dto.ForgotPasswordRequest) error
+	ResetPassword(ctx context.Context, req *dto.ResetPasswordRequest) error
 	RefreshToken(ctx context.Context, req *dto.RefreshTokenRequest) (*dto.AuthResponse, error)
 	Logout(ctx context.Context, req *dto.LogoutRequest) error
 }
 
 type authService struct {
-	userRepository  repository.UserRepository
-	cartRepository  repository.CartRepository
-	tokenRepository repository.TokenRepository
-	publisher       publisher.Publisher
-	cfg             *config.Config
+	userRepository       repository.UserRepository
+	cartRepository       repository.CartRepository
+	tokenRepository      repository.TokenRepository
+	resetTokenRepository repository.ResetTokenRepository
+	googleOAuth          oauth.Provider
+	publisher            publisher.Publisher
+	cfg                  *config.Config
+	logger               *slog.Logger
 }
 
 func (a *authService) Register(ctx context.Context, req *dto.RegisterRequest) (*dto.AuthResponse, error) {
@@ -39,7 +48,7 @@ func (a *authService) Register(ctx context.Context, req *dto.RegisterRequest) (*
 
 	user := &domain.User{
 		Email:     req.Email,
-		Password:  hashedPassword,
+		Password:  &hashedPassword,
 		FirstName: req.FirstName,
 		LastName:  req.LastName,
 		Phone:     req.Phone,
@@ -64,7 +73,7 @@ func (a *authService) Login(ctx context.Context, req *dto.LoginRequest) (*dto.Au
 		return nil, fmt.Errorf("faield to get user: %w", err)
 	}
 
-	if !utils.CheckPasswordHash(user.Password, req.Password) {
+	if !utils.CheckPasswordHash(*user.Password, req.Password) {
 		return nil, fmt.Errorf("invalid credentials")
 	}
 
@@ -73,6 +82,103 @@ func (a *authService) Login(ctx context.Context, req *dto.LoginRequest) (*dto.Au
 	}
 
 	return a.generateAuthResponse(ctx, user)
+}
+
+func (a *authService) GoogleLogin(ctx context.Context, req *dto.GoogleLoginRequest) (*dto.AuthResponse, error) {
+	info, err := a.googleOAuth.Verify(ctx, req.Credential)
+	if err != nil {
+		return nil, fmt.Errorf("google login: %w", err)
+	}
+
+	user, err := a.userRepository.GetUserByEmail(ctx, info.Email)
+	if err != nil && !errors.Is(err, repository.ErrsNotFound) {
+		return nil, fmt.Errorf("google login: %w", err)
+	}
+
+	provider := "google"
+
+	if user == nil {
+		user = &domain.User{
+			Email:        info.Email,
+			FirstName:    info.GivenName,
+			LastName:     info.FamilyName,
+			Role:         domain.Customer,
+			AuthProvider: &provider,
+			IsActive:     true,
+		}
+
+		if err := a.userRepository.CreateUser(ctx, user); err != nil {
+			return nil, fmt.Errorf("google login: create user: %w", err)
+		}
+		cart := &domain.Cart{UserId: user.Id}
+		if err := a.cartRepository.CreateCart(ctx, cart); err != nil {
+			return nil, fmt.Errorf("google login: create cart: %w", err)
+		}
+	} else {
+		if user.AuthProvider == nil {
+			user.AuthProvider = &provider
+			_ = a.userRepository.UpdateUser(ctx, user)
+		}
+	}
+
+	return a.generateAuthResponse(ctx, user)
+}
+
+func (a *authService) ForgotPassword(ctx context.Context, req *dto.ForgotPasswordRequest) error {
+	user, err := a.userRepository.GetUserByEmail(ctx, req.Email)
+	if err != nil || user == nil || user.Password == nil {
+		return nil
+	}
+
+	token, err := utils.GenerateHexToken()
+	if err != nil {
+		return err
+	}
+
+	if err := a.resetTokenRepository.Store(ctx, token, user.Id, time.Hour); err != nil {
+		return fmt.Errorf("failed to store reset token: %w", err)
+	}
+
+	resetLink := fmt.Sprintf("%s/reset-password?token=%s", a.cfg.Application.FrontendURL, token)
+
+	eventPayload := &dto.PasswordResetEmailEvent{
+		Email:     user.Email,
+		ResetLink: resetLink,
+	}
+
+	if err := a.publisher.Publish(ctx, a.cfg.Event.PasswordResetRequested, eventPayload, map[string]string{}); err != nil {
+		return fmt.Errorf("failed to publish password reset event: %w", err)
+	}
+	return nil
+}
+
+func (a *authService) ResetPassword(ctx context.Context, req *dto.ResetPasswordRequest) error {
+	userId, err := a.resetTokenRepository.VerifyAndDelete(ctx, req.Token)
+	if err != nil {
+		return err
+	}
+
+	user, err := a.userRepository.GetUserById(ctx, userId)
+	if err != nil {
+		return fmt.Errorf("user not found")
+	}
+
+	hashed, err := utils.HashPassword(req.Password)
+	if err != nil {
+		return fmt.Errorf("failed to hash password: %w", err)
+	}
+
+	user.Password = &hashed
+
+	if err := a.userRepository.UpdateUser(ctx, user); err != nil {
+		return fmt.Errorf("faield to update password: %w", err)
+	}
+
+	if err := a.tokenRepository.DeleteAllTokensByUserId(ctx, userId); err != nil {
+		a.logger.Warn("failed to delete all tokens", "error", err)
+	}
+
+	return nil
 }
 
 func (a *authService) RefreshToken(ctx context.Context, req *dto.RefreshTokenRequest) (*dto.AuthResponse, error) {
@@ -145,12 +251,15 @@ func (a *authService) generateAuthResponse(ctx context.Context, user *domain.Use
 	}, nil
 }
 
-func NewAuthService(userRepository repository.UserRepository, cartRepository repository.CartRepository, tokenRepository repository.TokenRepository, publisher publisher.Publisher, cfg *config.Config) AuthService {
+func NewAuthService(userRepository repository.UserRepository, cartRepository repository.CartRepository, tokenRepository repository.TokenRepository, resetTokenRepository repository.ResetTokenRepository, googleOAuth oauth.Provider, publisher publisher.Publisher, cfg *config.Config, logger *slog.Logger) AuthService {
 	return &authService{
-		userRepository:  userRepository,
-		cartRepository:  cartRepository,
-		tokenRepository: tokenRepository,
-		publisher:       publisher,
-		cfg:             cfg,
+		userRepository:       userRepository,
+		cartRepository:       cartRepository,
+		tokenRepository:      tokenRepository,
+		resetTokenRepository: resetTokenRepository,
+		googleOAuth:          googleOAuth,
+		publisher:            publisher,
+		cfg:                  cfg,
+		logger:               logger,
 	}
 }
