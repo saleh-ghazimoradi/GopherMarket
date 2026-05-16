@@ -85,6 +85,16 @@ definitions:
       stock:
         type: integer
     type: object
+  dto.ForgotPasswordRequest:
+    properties:
+      email:
+        type: string
+    type: object
+  dto.GoogleLoginRequest:
+    properties:
+      credential:
+        type: string
+    type: object
   dto.LoginRequest:
     properties:
       email:
@@ -213,6 +223,13 @@ definitions:
       password:
         type: string
       phone:
+        type: string
+    type: object
+  dto.ResetPasswordRequest:
+    properties:
+      password:
+        type: string
+      token:
         type: string
     type: object
   dto.UpdateCartItemRequest:
@@ -1176,6 +1193,101 @@ paths:
       summary: Update user profile
       tags:
       - Users
+  /v1/auth/forgot-password:
+    post:
+      consumes:
+      - application/json
+      description: Sends a password reset link to the email if it exists and belongs
+        to a password‑based account. The response always returns success to prevent
+        user enumeration.
+      parameters:
+      - description: User email
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ForgotPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: If the email exists, a reset link has been sent
+          schema:
+            $ref: '#/definitions/helper.Response'
+        "400":
+          description: Invalid request data
+          schema:
+            $ref: '#/definitions/helper.Response'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/helper.Response'
+      summary: Request password reset email
+      tags:
+      - Authentication
+  /v1/auth/google:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate user with a Google ID token. Creates a new account
+        if the email is not registered.
+      parameters:
+      - description: Google ID token
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.GoogleLoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Login successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/helper.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.AuthResponse'
+              type: object
+        "400":
+          description: Invalid request data or invalid Google token
+          schema:
+            $ref: '#/definitions/helper.Response'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/helper.Response'
+      summary: Google OAuth login
+      tags:
+      - Authentication
+  /v1/auth/reset-password:
+    post:
+      consumes:
+      - application/json
+      description: Sets a new password using the token received by email. All existing
+        refresh tokens are invalidated.
+      parameters:
+      - description: Reset token and new password
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ResetPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Password successfully reset
+          schema:
+            $ref: '#/definitions/helper.Response'
+        "400":
+          description: Invalid request data or invalid/expired token
+          schema:
+            $ref: '#/definitions/helper.Response'
+      summary: Reset password with token
+      tags:
+      - Authentication
 securityDefinitions:
   BearerAuth:
     description: JWT Bearer token (e.g., "Bearer {token}")

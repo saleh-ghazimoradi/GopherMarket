@@ -77,6 +77,17 @@ func (a *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	helper.SuccessResponse(w, "user successfully login", user)
 }
 
+// GoogleLogin godoc
+// @Summary      Google OAuth login
+// @Description  Authenticate user with a Google ID token. Creates a new account if the email is not registered.
+// @Tags         Authentication
+// @Accept       json
+// @Produce      json
+// @Param        request body dto.GoogleLoginRequest true "Google ID token"
+// @Success      200 {object} helper.Response{data=dto.AuthResponse} "Login successfully"
+// @Failure      400 {object} helper.Response "Invalid request data or invalid Google token"
+// @Failure      500 {object} helper.Response "Internal server error"
+// @Router       /v1/auth/google [post]
 func (a *AuthHandler) GoogleLogin(w http.ResponseWriter, r *http.Request) {
 	var payload dto.GoogleLoginRequest
 	if err := helper.ReadJSON(w, r, &payload); err != nil {
@@ -100,6 +111,17 @@ func (a *AuthHandler) GoogleLogin(w http.ResponseWriter, r *http.Request) {
 	helper.SuccessResponse(w, "Login successfully", authResp)
 }
 
+// ForgotPassword godoc
+// @Summary      Request password reset email
+// @Description  Sends a password reset link to the email if it exists and belongs to a password‑based account. The response always returns success to prevent user enumeration.
+// @Tags         Authentication
+// @Accept       json
+// @Produce      json
+// @Param        request body dto.ForgotPasswordRequest true "User email"
+// @Success      200 {object} helper.Response "If the email exists, a reset link has been sent"
+// @Failure      400 {object} helper.Response "Invalid request data"
+// @Failure      500 {object} helper.Response "Internal server error"
+// @Router       /v1/auth/forgot-password [post]
 func (a *AuthHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 	var payload dto.ForgotPasswordRequest
 	if err := helper.ReadJSON(w, r, &payload); err != nil {
@@ -122,6 +144,16 @@ func (a *AuthHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 	helper.SuccessResponse(w, "A reset password link has been sent", nil)
 }
 
+// ResetPassword godoc
+// @Summary      Reset password with token
+// @Description  Sets a new password using the token received by email. All existing refresh tokens are invalidated.
+// @Tags         Authentication
+// @Accept       json
+// @Produce      json
+// @Param        request body dto.ResetPasswordRequest true "Reset token and new password"
+// @Success      200 {object} helper.Response "Password successfully reset"
+// @Failure      400 {object} helper.Response "Invalid request data or invalid/expired token"
+// @Router       /v1/auth/reset-password [post]
 func (a *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	var payload dto.ResetPasswordRequest
 	if err := helper.ReadJSON(w, r, &payload); err != nil {
