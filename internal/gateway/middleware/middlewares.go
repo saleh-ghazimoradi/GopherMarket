@@ -6,14 +6,29 @@ import (
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/domain"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/helper"
 	"github.com/saleh-ghazimoradi/GopherMarket/utils"
+	"github.com/tomasen/realip"
+	"golang.org/x/time/rate"
 	"log/slog"
 	"net/http"
 	"strings"
+	"sync"
+	"time"
 )
 
+type client struct {
+	limiter  *rate.Limiter
+	lastSeen time.Time
+}
+
+type limiter struct {
+	mu      sync.Mutex
+	clients map[string]*client
+}
+
 type Middleware struct {
-	logger *slog.Logger
-	cfg    *config.Config
+	limiter *limiter
+	logger  *slog.Logger
+	cfg     *config.Config
 }
 
 func (m *Middleware) Logging(next http.Handler) http.Handler {
@@ -45,6 +60,47 @@ func (m *Middleware) Recover(next http.Handler) http.Handler {
 				helper.InternalServerError(w, "panic recovery hit", fmt.Errorf("%v", err))
 			}
 		}()
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (m *Middleware) RateLimit(next http.Handler) http.Handler {
+	if !m.cfg.RateLimiter.Enabled {
+		return next
+	}
+
+	go func() {
+		for {
+			time.Sleep(time.Minute)
+
+			m.limiter.mu.Lock()
+
+			for ip, c := range m.limiter.clients {
+				if time.Since(c.lastSeen) > 3*time.Minute {
+					delete(m.limiter.clients, ip)
+				}
+			}
+			m.limiter.mu.Unlock()
+		}
+	}()
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ip := realip.FromRequest(r)
+		m.limiter.mu.Lock()
+		if _, found := m.limiter.clients[ip]; !found {
+			m.limiter.clients[ip] = &client{
+				limiter: rate.NewLimiter(rate.Limit(m.cfg.RateLimiter.RPS), m.cfg.RateLimiter.Burst),
+			}
+		}
+
+		m.limiter.clients[ip].lastSeen = time.Now()
+
+		if !m.limiter.clients[ip].limiter.Allow() {
+			m.limiter.mu.Unlock()
+			helper.RateLimitExceededResponse(w, "Too many requests")
+			return
+		}
+		m.limiter.mu.Unlock()
 		next.ServeHTTP(w, r)
 	})
 }
@@ -124,8 +180,12 @@ func (m *Middleware) WrapAdmin(handlerFunc http.HandlerFunc) http.Handler {
 }
 
 func NewMiddleware(logger *slog.Logger, cfg *config.Config) *Middleware {
+	l := &limiter{
+		clients: make(map[string]*client),
+	}
 	return &Middleware{
-		logger: logger,
-		cfg:    cfg,
+		logger:  logger,
+		cfg:     cfg,
+		limiter: l,
 	}
 }
