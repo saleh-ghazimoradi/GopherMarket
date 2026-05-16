@@ -51,6 +51,10 @@ func validateQuery(v *helper.Validator, query string) {
 	v.Check(helper.MinChars(query, 1), "query", "Query must be at least 1 characters")
 }
 
+func validateToken(v *helper.Validator, token string) {
+	v.Check(helper.NotBlank(token), "token", "Token must be provided")
+}
+
 func ValidateRegisterRequest(v *helper.Validator, req *RegisterRequest) {
 	validateFirstNameAndLastName(v, req.FirstName)
 	validateFirstNameAndLastName(v, req.LastName)
@@ -117,4 +121,17 @@ func ValidateQuery(v *helper.Validator, req *SearchProductsRequest) {
 	if req.Query != "" {
 		validateQuery(v, req.Query)
 	}
+}
+
+func ValidateGoogleLoginRequest(v *helper.Validator, req *GoogleLoginRequest) {
+	v.Check(req.Credential != "", "credential", "must be provided")
+}
+
+func ValidateForgotPasswordRequest(v *helper.Validator, req *ForgotPasswordRequest) {
+	validateEmail(v, req.Email)
+}
+
+func ValidateResetPasswordRequest(v *helper.Validator, req *ResetPasswordRequest) {
+	validateToken(v, req.Token)
+	validatePassword(v, req.Password)
 }
