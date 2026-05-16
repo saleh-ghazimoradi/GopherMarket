@@ -16,6 +16,7 @@ import (
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/repository"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/server"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/service"
+	"github.com/saleh-ghazimoradi/GopherMarket/pkg/oauth"
 	"github.com/saleh-ghazimoradi/GopherMarket/pkg/uploadStrategy"
 	"github.com/spf13/cobra"
 	"log/slog"
@@ -96,6 +97,7 @@ var runCmd = &cobra.Command{
 			sLogger.Error("failed to create publisher", "err", err)
 			return
 		}
+		googleOAuth := oauth.NewGoogleOAuth(cfg.GoogleOAuth.ClientId)
 
 		/*----------Upload Strategy----------*/
 		var uploadStrategies uploadStrategy.UploadStrategy
@@ -114,9 +116,10 @@ var runCmd = &cobra.Command{
 		categoryRepository := repository.NewCategoryRepository(db, db)
 		productRepository := repository.NewProductRepository(db, db)
 		orderRepository := repository.NewOrderRepository(db, db)
+		resetTokenRepository := repository.NewResetTokenRepository(redis)
 
 		/*----------Services----------*/
-		authService := service.NewAuthService(userRepository, cartRepository, tokenRepository, watermillPublisher, cfg)
+		authService := service.NewAuthService(userRepository, cartRepository, tokenRepository, resetTokenRepository, googleOAuth, watermillPublisher, cfg, sLogger)
 		userService := service.NewUserService(userRepository)
 		categoryService := service.NewCategoryService(categoryRepository)
 		productService := service.NewProductService(productRepository, cacheRepository)
