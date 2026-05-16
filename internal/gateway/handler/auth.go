@@ -77,6 +77,73 @@ func (a *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	helper.SuccessResponse(w, "user successfully login", user)
 }
 
+func (a *AuthHandler) GoogleLogin(w http.ResponseWriter, r *http.Request) {
+	var payload dto.GoogleLoginRequest
+	if err := helper.ReadJSON(w, r, &payload); err != nil {
+		helper.BadRequestResponse(w, "Invalid given payload", err)
+		return
+	}
+
+	v := helper.NewValidator()
+	dto.ValidateGoogleLoginRequest(v, &payload)
+	if !v.Valid() {
+		helper.FailedValidationResponse(w, "payload is not valid")
+		return
+	}
+
+	authResp, err := a.authService.GoogleLogin(r.Context(), &payload)
+	if err != nil {
+		helper.InternalServerError(w, "failed to login", err)
+		return
+	}
+
+	helper.SuccessResponse(w, "Login successfully", authResp)
+}
+
+func (a *AuthHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
+	var payload dto.ForgotPasswordRequest
+	if err := helper.ReadJSON(w, r, &payload); err != nil {
+		helper.BadRequestResponse(w, "Invalid given payload", err)
+		return
+	}
+
+	v := helper.NewValidator()
+	dto.ValidateForgotPasswordRequest(v, &payload)
+	if !v.Valid() {
+		helper.FailedValidationResponse(w, "payload is not valid")
+		return
+	}
+
+	if err := a.authService.ForgotPassword(r.Context(), &payload); err != nil {
+		helper.InternalServerError(w, "could not process request", err)
+		return
+	}
+
+	helper.SuccessResponse(w, "A reset password link has been sent", nil)
+}
+
+func (a *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
+	var payload dto.ResetPasswordRequest
+	if err := helper.ReadJSON(w, r, &payload); err != nil {
+		helper.BadRequestResponse(w, "Invalid given payload", err)
+		return
+	}
+
+	v := helper.NewValidator()
+	dto.ValidateResetPasswordRequest(v, &payload)
+	if !v.Valid() {
+		helper.FailedValidationResponse(w, "payload is not valid")
+		return
+	}
+
+	if err := a.authService.ResetPassword(r.Context(), &payload); err != nil {
+		helper.BadRequestResponse(w, "password reset failed", err)
+		return
+	}
+
+	helper.SuccessResponse(w, "password successfully reset", nil)
+}
+
 // RefreshToken docs
 // @Summary Refresh access token
 // @Description Get a new access token using refresh token
