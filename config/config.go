@@ -22,10 +22,17 @@ type Config struct {
 	Upload      Upload
 	SMTP        SMTP
 	Event       Event
+	RateLimiter RateLimiter
 }
 
 type Event struct {
 	UserLoggedIn string `env:"USER_LOGGED_IN"`
+}
+
+type RateLimiter struct {
+	RPS     float64 `env:"RPS"`
+	Burst   int     `env:"BURST"`
+	Enabled bool    `env:"ENABLED"`
 }
 
 type Application struct {
