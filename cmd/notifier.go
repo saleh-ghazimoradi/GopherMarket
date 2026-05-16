@@ -9,6 +9,7 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/saleh-ghazimoradi/GopherMarket/config"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/domain"
+	"github.com/saleh-ghazimoradi/GopherMarket/internal/dto"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/logger"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/service"
 	"github.com/saleh-ghazimoradi/GopherMarket/pkg/awsCfg"
@@ -94,6 +95,8 @@ func processMessage(cfg *config.Config, logger *slog.Logger, msg *message.Messag
 	switch eventType {
 	case cfg.Event.UserLoggedIn:
 		return handleUserLoggedIn(logger, msg, emailNotifier)
+	case cfg.Event.PasswordResetRequested:
+		return handlePasswordResetRequested(logger, msg, emailNotifier)
 	default:
 		logger.Error("Unknown event type", "type", eventType)
 		return nil
@@ -115,6 +118,23 @@ func handleUserLoggedIn(logger *slog.Logger, msg *message.Message, emailNotifier
 	logger.Info("Sending login notification for", "email", user.Email)
 
 	return emailNotifier.SendLoginNotification(user.Email, userName)
+}
+
+func handlePasswordResetRequested(logger *slog.Logger, msg *message.Message, emailNotifier service.Notifier) error {
+	var event dto.PasswordResetEmailEvent
+	if err := json.Unmarshal(msg.Payload, &event); err != nil {
+		return err
+	}
+
+	email := &dto.Email{
+		To:      event.Email,
+		Subject: "Password Reset Request",
+		Body:    fmt.Sprintf("Click the link to reset your password: %s", event.ResetLink),
+	}
+
+	logger.Info("Sending email notification for password reset")
+
+	return emailNotifier.Send(email)
 }
 
 func init() {
