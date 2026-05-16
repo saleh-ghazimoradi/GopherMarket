@@ -23,10 +23,12 @@ type Config struct {
 	SMTP        SMTP
 	Event       Event
 	RateLimiter RateLimiter
+	GoogleOAuth GoogleOAuth
 }
 
 type Event struct {
-	UserLoggedIn string `env:"USER_LOGGED_IN"`
+	UserLoggedIn           string `env:"USER_LOGGED_IN"`
+	PasswordResetRequested string `env:"PASSWORD_RESET_REQUESTED"`
 }
 
 type RateLimiter struct {
@@ -38,6 +40,7 @@ type RateLimiter struct {
 type Application struct {
 	Version     string `env:"APP_VERSION"`
 	Environment string `env:"APP_ENVIRONMENT"`
+	FrontendURL string `env:"APP_FRONTEND_URL"`
 }
 
 type Redis struct {
@@ -101,6 +104,10 @@ type AWS struct {
 	S3Bucket        string `env:"AWS_S3_BUCKET"`
 	S3Endpoint      string `env:"AWS_S3_ENDPOINT"`
 	EventQueueName  string `env:"AWS_EVENT_QUEUE_NAME"`
+}
+
+type GoogleOAuth struct {
+	ClientId string `env:"GOOGLE_CLIENT_Id"`
 }
 
 func GetConfigInstance() (*Config, error) {
