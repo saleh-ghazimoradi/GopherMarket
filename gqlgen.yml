@@ -37,6 +37,8 @@ models:
     model: github.com/saleh-ghazimoradi/GopherMarket/internal/dto.OrderItemResponse
   ProductImage:
     model: github.com/saleh-ghazimoradi/GopherMarket/internal/dto.ProductImageResponse
+  Upload:
+    model: github.com/99designs/gqlgen/graphql.Upload
 
   RegisterInput:
     model: github.com/saleh-ghazimoradi/GopherMarket/internal/dto.RegisterRequest

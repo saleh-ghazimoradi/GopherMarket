@@ -1,0 +1,5 @@
+scalar Upload
+
+extend type Mutation {
+    uploadProductImage(productId: UInt!, image: Upload!): ProductImage!
+}
