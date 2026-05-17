@@ -135,6 +135,7 @@ var runCmd = &cobra.Command{
 			resolver.WithProductService(productService),
 			resolver.WithCartService(cartService),
 			resolver.WithOrderService(orderService),
+			resolver.WithUploadService(uploadService),
 		)
 
 		gqlHandler := graphqlHandler.NewGraphQLHandler(graphQLResolver)
