@@ -44,6 +44,12 @@ models:
     model: github.com/saleh-ghazimoradi/GopherMarket/internal/dto.LoginRequest
   LogoutInput:
     model: github.com/saleh-ghazimoradi/GopherMarket/internal/dto.LogoutRequest
+  GoogleLoginInput:
+    model: github.com/saleh-ghazimoradi/GopherMarket/internal/dto.GoogleLoginRequest
+  ForgotPasswordInput:
+    model: github.com/saleh-ghazimoradi/GopherMarket/internal/dto.ForgotPasswordRequest
+  ResetPasswordInput:
+    model: github.com/saleh-ghazimoradi/GopherMarket/internal/dto.ResetPasswordRequest
   RefreshTokenInput:
     model: github.com/saleh-ghazimoradi/GopherMarket/internal/dto.RefreshTokenRequest
   UpdateProfileInput:
