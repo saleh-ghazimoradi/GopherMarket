@@ -21,8 +21,11 @@ require (
 	github.com/spf13/cobra v1.10.2
 	github.com/swaggo/http-swagger v1.3.4
 	github.com/swaggo/swag v1.8.1
+	github.com/tomasen/realip v0.0.0-20180522021738-f0c99a92ddce
 	github.com/vektah/gqlparser/v2 v2.5.33
 	golang.org/x/crypto v0.50.0
+	golang.org/x/time v0.15.0
+	google.golang.org/api v0.279.0
 	gorm.io/driver/postgres v1.6.0
 	gorm.io/gorm v1.31.1
 )
@@ -74,11 +77,9 @@ require (
 	github.com/mailru/easyjson v0.7.6 // indirect
 	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	github.com/sosodev/duration v1.4.0 // indirect
 	github.com/spf13/pflag v1.0.9 // indirect
 	github.com/swaggo/files v0.0.0-20220610200504-28940afbdbfe // indirect
-	github.com/tomasen/realip v0.0.0-20180522021738-f0c99a92ddce // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.67.0 // indirect
 	go.opentelemetry.io/otel v1.43.0 // indirect
@@ -90,9 +91,7 @@ require (
 	golang.org/x/sync v0.20.0 // indirect
 	golang.org/x/sys v0.43.0 // indirect
 	golang.org/x/text v0.36.0 // indirect
-	golang.org/x/time v0.15.0 // indirect
 	golang.org/x/tools v0.43.0 // indirect
-	google.golang.org/api v0.279.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260427160629-7cedc36a6bc4 // indirect
 	google.golang.org/grpc v1.80.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
