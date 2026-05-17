@@ -4,21 +4,21 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/saleh-ghazimoradi/GopherMarket/pkg/uploadStrategy"
-	"mime/multipart"
+	"io"
 	"path/filepath"
 	"strings"
 )
 
 type UploadService interface {
-	UploadProductImage(productId uint, file *multipart.FileHeader) (string, error)
+	UploadProductImage(productId uint, file io.Reader, filename string) (string, error)
 }
 
 type uploadService struct {
 	uploadStrategy uploadStrategy.UploadStrategy
 }
 
-func (u *uploadService) UploadProductImage(productId uint, file *multipart.FileHeader) (string, error) {
-	ext := strings.ToLower(filepath.Ext(file.Filename))
+func (u *uploadService) UploadProductImage(productId uint, file io.Reader, filename string) (string, error) {
+	ext := strings.ToLower(filepath.Ext(filename))
 
 	if !isValidImageExt(ext) {
 		return "", fmt.Errorf("invalid file type: %s", ext)
@@ -28,7 +28,7 @@ func (u *uploadService) UploadProductImage(productId uint, file *multipart.FileH
 
 	path := fmt.Sprintf("products/%d/%s%s", productId, newFileName, ext)
 
-	return u.uploadStrategy.UploadFile(file, path)
+	return u.uploadStrategy.UploadFile(file, filename, path)
 }
 
 func isValidImageExt(ext string) bool {

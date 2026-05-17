@@ -3,7 +3,7 @@ package uploadStrategy
 import (
 	"context"
 	"fmt"
-	"mime/multipart"
+	"io"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -22,18 +22,14 @@ type S3Strategy struct {
 	cfg            *appCfg.Config
 }
 
-func (s *S3Strategy) UploadFile(file *multipart.FileHeader, path string) (string, error) {
-	src, err := file.Open()
-	if err != nil {
-		return "", fmt.Errorf("opening file: %w", err)
-	}
-	defer src.Close()
+func (s *S3Strategy) UploadFile(file io.Reader, filename, path string) (string, error) {
 
 	result, err := s.transferClient.UploadObject(context.TODO(), &transfermanager.UploadObjectInput{
 		Bucket: aws.String(s.bucket),
 		Key:    aws.String(path),
-		Body:   src,
+		Body:   file,
 	})
+
 	if err != nil {
 		return "", fmt.Errorf("uploading file: %w", err)
 	}

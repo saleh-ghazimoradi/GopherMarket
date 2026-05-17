@@ -25,7 +25,7 @@ type ProductService interface {
 	GetProductById(ctx context.Context, id uint) (*dto.ProductResponse, error)
 	UpdateProduct(ctx context.Context, id uint, req *dto.UpdateProductRequest) (*dto.ProductResponse, error)
 	DeleteProduct(ctx context.Context, id uint) error
-	AddProductImage(ctx context.Context, productId uint, url, altText string) error
+	AddProductImage(ctx context.Context, productId uint, url, altText string) (*dto.ProductImageResponse, error)
 	SearchProducts(ctx context.Context, req *dto.SearchProductsRequest) ([]*dto.ProductSearchResult, *helper.PaginatedMeta, error)
 }
 
@@ -158,10 +158,10 @@ func (p *productService) DeleteProduct(ctx context.Context, id uint) error {
 	return nil
 }
 
-func (p *productService) AddProductImage(ctx context.Context, productId uint, url, altText string) error {
+func (p *productService) AddProductImage(ctx context.Context, productId uint, url, altText string) (*dto.ProductImageResponse, error) {
 	count, err := p.productRepository.GetProductImageCount(ctx, productId)
 	if err != nil {
-		return fmt.Errorf("failed to get product image count: %w", err)
+		return nil, fmt.Errorf("failed to count images: %w", err)
 	}
 
 	image := &domain.ProductImage{
@@ -171,7 +171,17 @@ func (p *productService) AddProductImage(ctx context.Context, productId uint, ur
 		IsPrimary: count == 0,
 	}
 
-	return p.productRepository.CreateProductImage(ctx, image)
+	if err := p.productRepository.CreateProductImage(ctx, image); err != nil {
+		return nil, fmt.Errorf("failed to create image: %w", err)
+	}
+
+	return &dto.ProductImageResponse{
+		Id:        image.Id,
+		URL:       image.URL,
+		AltText:   image.AltText,
+		IsPrimary: image.IsPrimary,
+		CreatedAt: image.CreatedAt,
+	}, nil
 }
 
 func (p *productService) SearchProducts(ctx context.Context, req *dto.SearchProductsRequest) ([]*dto.ProductSearchResult, *helper.PaginatedMeta, error) {

@@ -197,18 +197,19 @@ func (p *ProductHandler) UploadProductImage(w http.ResponseWriter, r *http.Reque
 
 	defer file.Close()
 
-	url, err := p.uploadService.UploadProductImage(id, header)
+	url, err := p.uploadService.UploadProductImage(id, file, header.Filename)
 	if err != nil {
 		helper.InternalServerError(w, "failed to upload product image", err)
 		return
 	}
 
-	if err := p.productService.AddProductImage(r.Context(), id, url, header.Filename); err != nil {
-		helper.InternalServerError(w, "failed to upload product image", err)
+	imageResp, err := p.productService.AddProductImage(r.Context(), id, url, header.Filename)
+	if err != nil {
+		helper.InternalServerError(w, "failed to add product image", err)
 		return
 	}
 
-	helper.CreatedResponse(w, "product image successfully uploaded", url)
+	helper.CreatedResponse(w, "product image successfully uploaded", imageResp)
 }
 
 // SearchProducts docs

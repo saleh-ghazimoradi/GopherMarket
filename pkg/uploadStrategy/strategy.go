@@ -1,8 +1,8 @@
 package uploadStrategy
 
-import "mime/multipart"
+import "io"
 
 type UploadStrategy interface {
-	UploadFile(file *multipart.FileHeader, path string) (string, error)
+	UploadFile(file io.Reader, filename, path string) (string, error)
 	DeleteFile(path string) error
 }
