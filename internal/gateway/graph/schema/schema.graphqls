@@ -15,6 +15,9 @@ type Query {
 type Mutation {
     register(input: RegisterInput!): AuthPayload!
     login(input: LoginInput!): AuthPayload!
+    googleLogin(input: GoogleLoginInput!): AuthPayload!
+    forgotPassword(input: ForgotPasswordInput!): Boolean!
+    resetPassword(input: ResetPasswordInput!): Boolean!
     refreshToken(input: RefreshTokenInput!): AuthPayload!
     logout(input: LogoutInput!): Boolean!
 

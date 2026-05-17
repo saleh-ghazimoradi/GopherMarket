@@ -11,6 +11,19 @@ input LoginInput {
     password: String!
 }
 
+input GoogleLoginInput {
+    credential: String!
+}
+
+input ForgotPasswordInput {
+    email: String!
+}
+
+input ResetPasswordInput {
+    token: String!
+    password: String!
+}
+
 input RefreshTokenInput {
     refresh_token: String!
 }

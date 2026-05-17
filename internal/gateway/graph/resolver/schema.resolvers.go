@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/saleh-ghazimoradi/GopherMarket/internal/helper"
 
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/dto"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/gateway/graph"
@@ -18,33 +19,106 @@ import (
 
 // Register is the resolver for the register field.
 func (r *mutationResolver) Register(ctx context.Context, input dto.RegisterRequest) (*dto.AuthResponse, error) {
-	response, err := r.authService.Register(ctx, &input)
+	v := helper.NewValidator()
+	dto.ValidateRegisterRequest(v, &input)
+	if !v.Valid() {
+		return nil, helper.NewValidateError(v)
+	}
+
+	register, err := r.authService.Register(ctx, &input)
 	if err != nil {
 		return nil, fmt.Errorf("register error: %w", err)
 	}
-	return response, nil
+
+	return register, nil
 }
 
 // Login is the resolver for the login field.
 func (r *mutationResolver) Login(ctx context.Context, input dto.LoginRequest) (*dto.AuthResponse, error) {
-	response, err := r.authService.Login(ctx, &input)
+	v := helper.NewValidator()
+	dto.ValidateLoginRequest(v, &input)
+	if !v.Valid() {
+		return nil, helper.NewValidateError(v)
+	}
+
+	login, err := r.authService.Login(ctx, &input)
 	if err != nil {
 		return nil, fmt.Errorf("login error: %w", err)
 	}
-	return response, nil
+
+	return login, nil
+}
+
+// GoogleLogin is the resolver for the googleLogin field.
+func (r *mutationResolver) GoogleLogin(ctx context.Context, input dto.GoogleLoginRequest) (*dto.AuthResponse, error) {
+	v := helper.NewValidator()
+	dto.ValidateGoogleLoginRequest(v, &input)
+	if !v.Valid() {
+		return nil, helper.NewValidateError(v)
+	}
+
+	googleLogin, err := r.authService.GoogleLogin(ctx, &input)
+	if err != nil {
+		return nil, fmt.Errorf("google oauth login error: %w", err)
+	}
+
+	return googleLogin, nil
+}
+
+// ForgotPassword is the resolver for the forgotPassword field.
+func (r *mutationResolver) ForgotPassword(ctx context.Context, input dto.ForgotPasswordRequest) (bool, error) {
+	v := helper.NewValidator()
+	dto.ValidateForgotPasswordRequest(v, &input)
+	if !v.Valid() {
+		return false, helper.NewValidateError(v)
+	}
+
+	if err := r.authService.ForgotPassword(ctx, &input); err != nil {
+		return false, fmt.Errorf("forgot password error: %w", err)
+	}
+
+	return true, nil
+}
+
+// ResetPassword is the resolver for the resetPassword field.
+func (r *mutationResolver) ResetPassword(ctx context.Context, input dto.ResetPasswordRequest) (bool, error) {
+	v := helper.NewValidator()
+	dto.ValidateResetPasswordRequest(v, &input)
+	if !v.Valid() {
+		return false, helper.NewValidateError(v)
+	}
+
+	if err := r.authService.ResetPassword(ctx, &input); err != nil {
+		return false, fmt.Errorf("reset password error: %w", err)
+	}
+
+	return true, nil
 }
 
 // RefreshToken is the resolver for the refreshToken field.
 func (r *mutationResolver) RefreshToken(ctx context.Context, input dto.RefreshTokenRequest) (*dto.AuthResponse, error) {
-	response, err := r.authService.RefreshToken(ctx, &input)
+	v := helper.NewValidator()
+	dto.ValidateRefreshTokenRequest(v, &input)
+	if !v.Valid() {
+		return nil, helper.NewValidateError(v)
+	}
+
+	refreshToken, err := r.authService.RefreshToken(ctx, &input)
 	if err != nil {
 		return nil, fmt.Errorf("refresh token error: %w", err)
 	}
-	return response, nil
+
+	return refreshToken, nil
 }
 
 // Logout is the resolver for the logout field.
 func (r *mutationResolver) Logout(ctx context.Context, input dto.LogoutRequest) (bool, error) {
+	v := helper.NewValidator()
+	dto.ValidateLogoutRequest(v, &input)
+	if !v.Valid() {
+		return false, helper.NewValidateError(v)
+	}
+
 	if err := r.authService.Logout(ctx, &input); err != nil {
 		return false, fmt.Errorf("logout error: %w", err)
 	}
@@ -59,6 +133,9 @@ func (r *mutationResolver) UpdateProfile(ctx context.Context, input dto.UpdatePr
 	}
 
 	user, err := r.userService.GetUserById(ctx, userId)
+	if err != nil {
+		return nil, fmt.Errorf("get user error: %w", err)
+	}
 
 	if input.FirstName != nil {
 		user.FirstName = *input.FirstName
@@ -70,6 +147,12 @@ func (r *mutationResolver) UpdateProfile(ctx context.Context, input dto.UpdatePr
 
 	if input.Phone != nil {
 		user.Phone = *input.Phone
+	}
+
+	v := helper.NewValidator()
+	dto.ValidateUpdateProfileRequest(v, &input)
+	if !v.Valid() {
+		return nil, helper.NewValidateError(v)
 	}
 
 	updateUser, err := r.userService.UpdateUserProfile(ctx, userId, &input)
@@ -89,6 +172,12 @@ func (r *mutationResolver) CreateCategory(ctx context.Context, input dto.CreateC
 
 	if !admin {
 		return nil, errors.New("access denied")
+	}
+
+	v := helper.NewValidator()
+	dto.ValidateCreateCategoryRequest(v, &input)
+	if !v.Valid() {
+		return nil, helper.NewValidateError(v)
 	}
 
 	category, err := r.categoryService.CreateCategory(ctx, &input)
@@ -113,6 +202,12 @@ func (r *mutationResolver) UpdateCategory(ctx context.Context, id string, input 
 	categoryId, err := parseId(id)
 	if err != nil {
 		return nil, fmt.Errorf("parse category id error: %w", err)
+	}
+
+	v := helper.NewValidator()
+	dto.ValidateUpdateCategoryRequest(v, &input)
+	if !v.Valid() {
+		return nil, helper.NewValidateError(v)
 	}
 
 	category, err := r.categoryService.GetCategory(ctx, categoryId)
@@ -174,6 +269,12 @@ func (r *mutationResolver) CreateProduct(ctx context.Context, input dto.CreatePr
 		return nil, errors.New("access denied")
 	}
 
+	v := helper.NewValidator()
+	dto.ValidateCreateProductRequest(v, &input)
+	if !v.Valid() {
+		return nil, helper.NewValidateError(v)
+	}
+
 	product, err := r.productService.CreateProduct(ctx, &input)
 	if err != nil {
 		return nil, fmt.Errorf("create product error: %w", err)
@@ -196,6 +297,12 @@ func (r *mutationResolver) UpdateProduct(ctx context.Context, id string, input d
 	productId, err := parseId(id)
 	if err != nil {
 		return nil, fmt.Errorf("parse product id error: %w", err)
+	}
+
+	v := helper.NewValidator()
+	dto.ValidateUpdateProductRequest(v, &input)
+	if !v.Valid() {
+		return nil, helper.NewValidateError(v)
 	}
 
 	product, err := r.productService.GetProductById(ctx, productId)
