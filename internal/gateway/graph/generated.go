@@ -81,24 +81,25 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		AddToCart      func(childComplexity int, input dto.AddToCartRequest) int
-		CreateCategory func(childComplexity int, input dto.CreateCategoryRequest) int
-		CreateOrder    func(childComplexity int) int
-		CreateProduct  func(childComplexity int, input dto.CreateProductRequest) int
-		DeleteCategory func(childComplexity int, id string) int
-		DeleteProduct  func(childComplexity int, id string) int
-		ForgotPassword func(childComplexity int, input dto.ForgotPasswordRequest) int
-		GoogleLogin    func(childComplexity int, input dto.GoogleLoginRequest) int
-		Login          func(childComplexity int, input dto.LoginRequest) int
-		Logout         func(childComplexity int, input dto.LogoutRequest) int
-		RefreshToken   func(childComplexity int, input dto.RefreshTokenRequest) int
-		Register       func(childComplexity int, input dto.RegisterRequest) int
-		RemoveFromCart func(childComplexity int, id string) int
-		ResetPassword  func(childComplexity int, input dto.ResetPasswordRequest) int
-		UpdateCartItem func(childComplexity int, id string, input dto.UpdateCartItemRequest) int
-		UpdateCategory func(childComplexity int, id string, input dto.UpdateCategoryRequest) int
-		UpdateProduct  func(childComplexity int, id string, input dto.UpdateProductRequest) int
-		UpdateProfile  func(childComplexity int, input dto.UpdateProfileRequest) int
+		AddToCart          func(childComplexity int, input dto.AddToCartRequest) int
+		CreateCategory     func(childComplexity int, input dto.CreateCategoryRequest) int
+		CreateOrder        func(childComplexity int) int
+		CreateProduct      func(childComplexity int, input dto.CreateProductRequest) int
+		DeleteCategory     func(childComplexity int, id string) int
+		DeleteProduct      func(childComplexity int, id string) int
+		ForgotPassword     func(childComplexity int, input dto.ForgotPasswordRequest) int
+		GoogleLogin        func(childComplexity int, input dto.GoogleLoginRequest) int
+		Login              func(childComplexity int, input dto.LoginRequest) int
+		Logout             func(childComplexity int, input dto.LogoutRequest) int
+		RefreshToken       func(childComplexity int, input dto.RefreshTokenRequest) int
+		Register           func(childComplexity int, input dto.RegisterRequest) int
+		RemoveFromCart     func(childComplexity int, id string) int
+		ResetPassword      func(childComplexity int, input dto.ResetPasswordRequest) int
+		UpdateCartItem     func(childComplexity int, id string, input dto.UpdateCartItemRequest) int
+		UpdateCategory     func(childComplexity int, id string, input dto.UpdateCategoryRequest) int
+		UpdateProduct      func(childComplexity int, id string, input dto.UpdateProductRequest) int
+		UpdateProfile      func(childComplexity int, input dto.UpdateProfileRequest) int
+		UploadProductImage func(childComplexity int, productID uint, image graphql.Upload) int
 	}
 
 	Order struct {
@@ -219,6 +220,7 @@ type MutationResolver interface {
 	UpdateCartItem(ctx context.Context, id string, input dto.UpdateCartItemRequest) (*dto.CartResponse, error)
 	RemoveFromCart(ctx context.Context, id string) (bool, error)
 	CreateOrder(ctx context.Context) (*dto.OrderResponse, error)
+	UploadProductImage(ctx context.Context, productID uint, image graphql.Upload) (*dto.ProductImageResponse, error)
 }
 type OrderResolver interface {
 	ID(ctx context.Context, obj *dto.OrderResponse) (string, error)
@@ -584,6 +586,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.UpdateProfile(childComplexity, args["input"].(dto.UpdateProfileRequest)), true
+	case "Mutation.uploadProductImage":
+		if e.ComplexityRoot.Mutation.UploadProductImage == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_uploadProductImage_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.UploadProductImage(childComplexity, args["productId"].(uint), args["image"].(graphql.Upload)), true
 
 	case "Order.created_at":
 		if e.ComplexityRoot.Order.CreatedAt == nil {
@@ -1043,7 +1056,7 @@ func newExecutionContext(
 	}
 }
 
-//go:embed "schema/inputs.graphqls" "schema/scalars.graphqls" "schema/schema.graphqls" "schema/types.graphqls"
+//go:embed "schema/inputs.graphqls" "schema/scalars.graphqls" "schema/schema.graphqls" "schema/types.graphqls" "schema/upload.graphqls"
 var sourcesFS embed.FS
 
 func sourceData(filename string) string {
@@ -1059,6 +1072,7 @@ var sources = []*ast.Source{
 	{Name: "schema/scalars.graphqls", Input: sourceData("schema/scalars.graphqls"), BuiltIn: false},
 	{Name: "schema/schema.graphqls", Input: sourceData("schema/schema.graphqls"), BuiltIn: false},
 	{Name: "schema/types.graphqls", Input: sourceData("schema/types.graphqls"), BuiltIn: false},
+	{Name: "schema/upload.graphqls", Input: sourceData("schema/upload.graphqls"), BuiltIn: false},
 }
 var parsedSchema = gqlparser.MustLoadSchema(sources...)
 
@@ -1663,6 +1677,28 @@ func (ec *executionContext) field_Mutation_updateProfile_args(ctx context.Contex
 		return nil, err
 	}
 	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_uploadProductImage_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "productId",
+		func(ctx context.Context, v any) (uint, error) {
+			return ec.unmarshalNUInt2uint(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["productId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "image",
+		func(ctx context.Context, v any) (graphql.Upload, error) {
+			return ec.unmarshalNUpload2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚐUpload(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["image"] = arg1
 	return args, nil
 }
 
@@ -3102,6 +3138,50 @@ func (ec *executionContext) fieldContext_Mutation_createOrder(_ context.Context,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return ec.childFields_Order(ctx, field)
 		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_uploadProductImage(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_uploadProductImage(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().UploadProductImage(ctx, fc.Args["productId"].(uint), fc.Args["image"].(graphql.Upload))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *dto.ProductImageResponse) graphql.Marshaler {
+			return ec.marshalNProductImage2ᚖgithubᚗcomᚋsalehᚑghazimoradiᚋGopherMarketᚋinternalᚋdtoᚐProductImageResponse(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_uploadProductImage(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_ProductImage(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_uploadProductImage_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -6799,6 +6879,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "uploadProductImage":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_uploadProductImage(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -8481,6 +8568,16 @@ func (ec *executionContext) marshalNProductImage2ᚕgithubᚗcomᚋsalehᚑghazi
 	return ret
 }
 
+func (ec *executionContext) marshalNProductImage2ᚖgithubᚗcomᚋsalehᚑghazimoradiᚋGopherMarketᚋinternalᚋdtoᚐProductImageResponse(ctx context.Context, sel ast.SelectionSet, v *dto.ProductImageResponse) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ProductImage(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNRefreshTokenInput2githubᚗcomᚋsalehᚑghazimoradiᚋGopherMarketᚋinternalᚋdtoᚐRefreshTokenRequest(ctx context.Context, v any) (dto.RefreshTokenRequest, error) {
 	res, err := ec.unmarshalInputRefreshTokenInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -8562,6 +8659,22 @@ func (ec *executionContext) unmarshalNUpdateProductInput2githubᚗcomᚋsalehᚑ
 func (ec *executionContext) unmarshalNUpdateProfileInput2githubᚗcomᚋsalehᚑghazimoradiᚋGopherMarketᚋinternalᚋdtoᚐUpdateProfileRequest(ctx context.Context, v any) (dto.UpdateProfileRequest, error) {
 	res, err := ec.unmarshalInputUpdateProfileInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNUpload2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚐUpload(ctx context.Context, v any) (graphql.Upload, error) {
+	res, err := graphql.UnmarshalUpload(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNUpload2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚐUpload(ctx context.Context, sel ast.SelectionSet, v graphql.Upload) graphql.Marshaler {
+	_ = sel
+	res := graphql.MarshalUpload(v)
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
 }
 
 func (ec *executionContext) marshalNUser2githubᚗcomᚋsalehᚑghazimoradiᚋGopherMarketᚋinternalᚋdtoᚐUserResponse(ctx context.Context, sel ast.SelectionSet, v dto.UserResponse) graphql.Marshaler {

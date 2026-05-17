@@ -9,11 +9,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/saleh-ghazimoradi/GopherMarket/internal/helper"
 
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/dto"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/gateway/graph"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/gateway/graph/model"
+	"github.com/saleh-ghazimoradi/GopherMarket/internal/helper"
 	"github.com/saleh-ghazimoradi/GopherMarket/utils"
 )
 
@@ -132,35 +132,18 @@ func (r *mutationResolver) UpdateProfile(ctx context.Context, input dto.UpdatePr
 		return nil, errors.New("unauthorized")
 	}
 
-	user, err := r.userService.GetUserById(ctx, userId)
-	if err != nil {
-		return nil, fmt.Errorf("get user error: %w", err)
-	}
-
-	if input.FirstName != nil {
-		user.FirstName = *input.FirstName
-	}
-
-	if input.LastName != nil {
-		user.LastName = *input.LastName
-	}
-
-	if input.Phone != nil {
-		user.Phone = *input.Phone
-	}
-
 	v := helper.NewValidator()
 	dto.ValidateUpdateProfileRequest(v, &input)
 	if !v.Valid() {
 		return nil, helper.NewValidateError(v)
 	}
 
-	updateUser, err := r.userService.UpdateUserProfile(ctx, userId, &input)
+	updatedUser, err := r.userService.UpdateUserProfile(ctx, userId, &input)
 	if err != nil {
 		return nil, fmt.Errorf("update user error: %w", err)
 	}
 
-	return updateUser, nil
+	return updatedUser, nil
 }
 
 // CreateCategory is the resolver for the createCategory field.
@@ -194,7 +177,6 @@ func (r *mutationResolver) UpdateCategory(ctx context.Context, id string, input 
 	if err != nil {
 		return nil, err
 	}
-
 	if !admin {
 		return nil, errors.New("access denied")
 	}
@@ -208,23 +190,6 @@ func (r *mutationResolver) UpdateCategory(ctx context.Context, id string, input 
 	dto.ValidateUpdateCategoryRequest(v, &input)
 	if !v.Valid() {
 		return nil, helper.NewValidateError(v)
-	}
-
-	category, err := r.categoryService.GetCategory(ctx, categoryId)
-	if err != nil {
-		return nil, fmt.Errorf("get category error: %w", err)
-	}
-
-	if input.Name != nil {
-		category.Name = *input.Name
-	}
-
-	if input.Description != nil {
-		category.Description = *input.Description
-	}
-
-	if input.IsActive != nil {
-		category.IsActive = *input.IsActive
 	}
 
 	updatedCategory, err := r.categoryService.UpdateCategory(ctx, categoryId, &input)
@@ -303,35 +268,6 @@ func (r *mutationResolver) UpdateProduct(ctx context.Context, id string, input d
 	dto.ValidateUpdateProductRequest(v, &input)
 	if !v.Valid() {
 		return nil, helper.NewValidateError(v)
-	}
-
-	product, err := r.productService.GetProductById(ctx, productId)
-	if err != nil {
-		return nil, fmt.Errorf("get product error: %w", err)
-	}
-
-	if input.CategoryId != nil {
-		product.CategoryId = *input.CategoryId
-	}
-
-	if input.Name != nil {
-		product.Name = *input.Name
-	}
-
-	if input.Price != nil {
-		product.Price = *input.Price
-	}
-
-	if input.Description != nil {
-		product.Description = *input.Description
-	}
-
-	if input.IsActive != nil {
-		product.IsActive = *input.IsActive
-	}
-
-	if input.Stock != nil {
-		product.Stock = *input.Stock
 	}
 
 	updatedProduct, err := r.productService.UpdateProduct(ctx, productId, &input)

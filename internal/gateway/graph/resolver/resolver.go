@@ -11,6 +11,7 @@ type Resolver struct {
 	orderService    service.OrderService
 	productService  service.ProductService
 	userService     service.UserService
+	uploadService   service.UploadService
 }
 
 type Options func(*Resolver)
@@ -48,6 +49,12 @@ func WithProductService(productService service.ProductService) Options {
 func WithUserService(userService service.UserService) Options {
 	return func(r *Resolver) {
 		r.userService = userService
+	}
+}
+
+func WithUploadService(uploadService service.UploadService) Options {
+	return func(r *Resolver) {
+		r.uploadService = uploadService
 	}
 }
 
