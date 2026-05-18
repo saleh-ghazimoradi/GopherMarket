@@ -24,6 +24,19 @@ type Config struct {
 	Event       Event
 	RateLimiter RateLimiter
 	GoogleOAuth GoogleOAuth
+	Tracing     Tracing
+	Metrics     Metrics
+}
+
+type Tracing struct {
+	Enabled  bool    `env:"TRACING_ENABLED"`
+	Endpoint string  `env:"TRACING_ENDPOINT"`
+	Sampling float64 `env:"TRACING_SAMPLING_RATE"`
+}
+
+type Metrics struct {
+	Enabled bool   `env:"METRICS_ENABLED"`
+	Port    string `env:"METRICS_PORT"`
 }
 
 type Event struct {

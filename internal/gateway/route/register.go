@@ -91,7 +91,7 @@ func (r *RegisterRoute) RegisterRoutes() http.Handler {
 	r.cartRoute.CartRoutes(mux)
 	r.orderRoute.OrderRoute(mux)
 	r.GraphQLRoute.GraphQLRoutes(mux)
-	return r.middleware.Recover(r.middleware.Logging(r.middleware.CORS(r.middleware.RateLimit(mux))))
+	return r.middleware.Recover(r.middleware.Tracing(r.middleware.Metrics(r.middleware.Logging(r.middleware.CORS(r.middleware.RateLimit(mux))))))
 }
 
 func NewRegisterRoute(opts ...Options) *RegisterRoute {

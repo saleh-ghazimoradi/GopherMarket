@@ -197,7 +197,7 @@ func (p *ProductHandler) UploadProductImage(w http.ResponseWriter, r *http.Reque
 
 	defer file.Close()
 
-	url, err := p.uploadService.UploadProductImage(id, file, header.Filename)
+	url, err := p.uploadService.UploadProductImage(r.Context(), id, file, header.Filename)
 	if err != nil {
 		helper.InternalServerError(w, "failed to upload product image", err)
 		return

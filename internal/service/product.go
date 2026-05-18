@@ -9,6 +9,9 @@ import (
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/dto"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/helper"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/repository"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 	"time"
 )
 
@@ -32,9 +35,17 @@ type ProductService interface {
 type productService struct {
 	productRepository repository.ProductRepository
 	redisCache        repository.RedisCache
+	tracer            trace.Tracer
 }
 
 func (p *productService) CreateProduct(ctx context.Context, req *dto.CreateProductRequest) (*dto.ProductResponse, error) {
+	ctx, span := p.tracer.Start(ctx, "ProductService.CreateProduct",
+		trace.WithAttributes(
+			attribute.String("product.name", req.Name),
+			attribute.Int64("product.category_id", int64(req.CategoryId)),
+		))
+	defer span.End()
+
 	product := &domain.Product{
 		CategoryId:  req.CategoryId,
 		Name:        req.Name,
@@ -45,8 +56,11 @@ func (p *productService) CreateProduct(ctx context.Context, req *dto.CreateProdu
 	}
 
 	if err := p.productRepository.CreateProduct(ctx, product); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to create product")
 		return nil, fmt.Errorf("failed to create product: %w", err)
 	}
+	span.SetAttributes(attribute.Int64("product.id", int64(product.Id)))
 
 	_ = p.redisCache.DeletePattern(ctx, productListPattern)
 
@@ -54,6 +68,10 @@ func (p *productService) CreateProduct(ctx context.Context, req *dto.CreateProdu
 }
 
 func (p *productService) GetProducts(ctx context.Context, page, limit int) ([]*dto.ProductResponse, *helper.PaginatedMeta, error) {
+	ctx, span := p.tracer.Start(ctx, "ProductService.GetProducts",
+		trace.WithAttributes(attribute.Int("page", page), attribute.Int("limit", limit)))
+	defer span.End()
+
 	if page < 1 {
 		page = 1
 	}
@@ -76,11 +94,15 @@ func (p *productService) GetProducts(ctx context.Context, page, limit int) ([]*d
 
 	total, err := p.productRepository.CountActiveProducts(ctx)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to count products")
 		return nil, nil, fmt.Errorf("failed to count products: %w", err)
 	}
 
 	products, err := p.productRepository.GetProducts(ctx, offset, limit)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to get products")
 		return nil, nil, fmt.Errorf("failed to get products: %w", err)
 	}
 
@@ -90,6 +112,10 @@ func (p *productService) GetProducts(ctx context.Context, page, limit int) ([]*d
 }
 
 func (p *productService) GetProductById(ctx context.Context, id uint) (*dto.ProductResponse, error) {
+	ctx, span := p.tracer.Start(ctx, "ProductService.GetProductById",
+		trace.WithAttributes(attribute.Int64("product.id", int64(id))))
+	defer span.End()
+
 	key := fmt.Sprintf(productByIdKey, id)
 
 	var productCache domain.Product
@@ -99,6 +125,8 @@ func (p *productService) GetProductById(ctx context.Context, id uint) (*dto.Prod
 
 	product, err := p.productRepository.GetProductById(ctx, id)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "product not found")
 		return nil, fmt.Errorf("failed to get product: %w", err)
 	}
 
@@ -108,36 +136,39 @@ func (p *productService) GetProductById(ctx context.Context, id uint) (*dto.Prod
 }
 
 func (p *productService) UpdateProduct(ctx context.Context, id uint, req *dto.UpdateProductRequest) (*dto.ProductResponse, error) {
+	ctx, span := p.tracer.Start(ctx, "ProductService.UpdateProduct",
+		trace.WithAttributes(attribute.Int64("product.id", int64(id))))
+	defer span.End()
+
 	product, err := p.productRepository.GetProductById(ctx, id)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "product not found")
 		return nil, fmt.Errorf("failed to get product: %w", err)
 	}
 
 	if req.CategoryId != nil {
 		product.CategoryId = *req.CategoryId
 	}
-
 	if req.Name != nil {
 		product.Name = *req.Name
 	}
-
 	if req.Description != nil {
 		product.Description = *req.Description
 	}
-
 	if req.Price != nil {
 		product.Price = *req.Price
 	}
-
 	if req.Stock != nil {
 		product.Stock = *req.Stock
 	}
-
 	if req.IsActive != nil {
 		product.IsActive = *req.IsActive
 	}
 
 	if err := p.productRepository.UpdateProduct(ctx, product); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to update product")
 		return nil, fmt.Errorf("failed to update product: %w", err)
 	}
 
@@ -148,7 +179,13 @@ func (p *productService) UpdateProduct(ctx context.Context, id uint, req *dto.Up
 }
 
 func (p *productService) DeleteProduct(ctx context.Context, id uint) error {
+	ctx, span := p.tracer.Start(ctx, "ProductService.DeleteProduct",
+		trace.WithAttributes(attribute.Int64("product.id", int64(id))))
+	defer span.End()
+
 	if err := p.productRepository.DeleteProduct(ctx, id); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to delete product")
 		return err
 	}
 
@@ -159,8 +196,14 @@ func (p *productService) DeleteProduct(ctx context.Context, id uint) error {
 }
 
 func (p *productService) AddProductImage(ctx context.Context, productId uint, url, altText string) (*dto.ProductImageResponse, error) {
+	ctx, span := p.tracer.Start(ctx, "ProductService.AddProductImage",
+		trace.WithAttributes(attribute.Int64("product.id", int64(productId))))
+	defer span.End()
+
 	count, err := p.productRepository.GetProductImageCount(ctx, productId)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to count images")
 		return nil, fmt.Errorf("failed to count images: %w", err)
 	}
 
@@ -172,8 +215,11 @@ func (p *productService) AddProductImage(ctx context.Context, productId uint, ur
 	}
 
 	if err := p.productRepository.CreateProductImage(ctx, image); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to create image")
 		return nil, fmt.Errorf("failed to create image: %w", err)
 	}
+	span.SetAttributes(attribute.Int64("image.id", int64(image.Id)))
 
 	return &dto.ProductImageResponse{
 		Id:        image.Id,
@@ -185,6 +231,10 @@ func (p *productService) AddProductImage(ctx context.Context, productId uint, ur
 }
 
 func (p *productService) SearchProducts(ctx context.Context, req *dto.SearchProductsRequest) ([]*dto.ProductSearchResult, *helper.PaginatedMeta, error) {
+	ctx, span := p.tracer.Start(ctx, "ProductService.SearchProducts",
+		trace.WithAttributes(attribute.String("query", req.Query)))
+	defer span.End()
+
 	if req.Page < 1 {
 		req.Page = 1
 	}
@@ -196,19 +246,19 @@ func (p *productService) SearchProducts(ctx context.Context, req *dto.SearchProd
 
 	products, ranks, total, err := p.productRepository.SearchProducts(ctx, req, offset, req.Limit)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "search failed")
 		return nil, nil, err
 	}
 
 	results := make([]*dto.ProductSearchResult, len(products))
 	for i := range products {
 		results[i] = &dto.ProductSearchResult{
-			// Use the existing helper (renamed for clarity if you prefer, but here it's toProductResp)
 			ProductResponse: *p.toProductResp(products[i]),
 			Rank:            ranks[i],
 		}
 	}
 
-	// Reuse buildMeta – eliminates duplicate pagination arithmetic
 	meta := p.buildMeta(req.Page, req.Limit, total)
 
 	return results, meta, nil
@@ -266,9 +316,10 @@ func (p *productService) buildMeta(page, limit int, total int64) *helper.Paginat
 	}
 }
 
-func NewProductService(productRepository repository.ProductRepository, redisCache repository.RedisCache) ProductService {
+func NewProductService(productRepository repository.ProductRepository, redisCache repository.RedisCache, tracer trace.Tracer) ProductService {
 	return &productService{
 		productRepository: productRepository,
 		redisCache:        redisCache,
+		tracer:            tracer,
 	}
 }

@@ -6,6 +6,7 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
+	"gorm.io/plugin/opentelemetry/tracing"
 	"log/slog"
 	"time"
 )
@@ -122,6 +123,10 @@ func (p *Postgresql) Connect() (*gorm.DB, error) {
 	if err != nil {
 		p.logger.Error("failed to open database connection", "error", err)
 		return nil, fmt.Errorf("gorm open: %w", err)
+	}
+
+	if err := db.Use(tracing.NewPlugin()); err != nil {
+		return nil, fmt.Errorf("failed to setup GORM tracing: %w", err)
 	}
 
 	sqlDB, err := db.DB()

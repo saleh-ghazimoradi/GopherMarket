@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"github.com/saleh-ghazimoradi/GopherMarket/config"
+	"github.com/saleh-ghazimoradi/GopherMarket/infra/metrics"
 	"github.com/saleh-ghazimoradi/GopherMarket/infra/postgresql"
 	"github.com/saleh-ghazimoradi/GopherMarket/infra/publisher"
 	"github.com/saleh-ghazimoradi/GopherMarket/infra/redis"
+	"github.com/saleh-ghazimoradi/GopherMarket/infra/tracing"
 	graphqlHandler "github.com/saleh-ghazimoradi/GopherMarket/internal/gateway/graph/handler"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/gateway/graph/resolver"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/gateway/handler"
@@ -19,8 +21,12 @@ import (
 	"github.com/saleh-ghazimoradi/GopherMarket/pkg/oauth"
 	"github.com/saleh-ghazimoradi/GopherMarket/pkg/uploadStrategy"
 	"github.com/spf13/cobra"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/contrib/instrumentation/runtime"
+	"go.opentelemetry.io/otel"
 	"log/slog"
 	"os"
+	"time"
 )
 
 // runCmd represents the run command
@@ -41,6 +47,54 @@ var runCmd = &cobra.Command{
 		if err != nil {
 			sLogger.Error("Failed to get config instance", "err", err)
 			return
+		}
+
+		/*---------- Tracing ----------*/
+		tracerShutdown, err := tracing.Setup(ctx, cfg, "gophermarket-api")
+		if err != nil {
+			sLogger.Error("failed to setup tracing", "err", err)
+			os.Exit(1)
+		}
+		defer func() {
+			if err := tracerShutdown(context.Background()); err != nil {
+				sLogger.Error("tracer shutdown error", "err", err)
+			}
+		}()
+
+		authTracer := otel.Tracer("service.auth")
+		userTracer := otel.Tracer("service.user")
+		categoryTracer := otel.Tracer("service.category")
+		productTracer := otel.Tracer("service.product")
+		cartTracer := otel.Tracer("service.cart")
+		orderTracer := otel.Tracer("service.order")
+		uploadTracer := otel.Tracer("service.upload")
+
+		/*---------- Metrics ----------*/
+		metricsShutdown, metricsHandler, err := metrics.Setup(&cfg.Metrics, "gophermarket-api")
+		if err != nil {
+			sLogger.Error("failed to setup metrics", "err", err)
+			os.Exit(1)
+		}
+		defer func() {
+			if err := metricsShutdown(context.Background()); err != nil {
+				sLogger.Error("metrics shutdown error", "err", err)
+			}
+		}()
+
+		// Start runtime metrics (goroutines, memory, etc.)
+		if cfg.Metrics.Enabled {
+			if err := runtime.Start(runtime.WithMinimumReadMemStatsInterval(5 * time.Second)); err != nil {
+				sLogger.Error("failed to start runtime metrics", "err", err)
+			}
+		}
+
+		// Start metrics HTTP server in background
+		if cfg.Metrics.Enabled && metricsHandler != nil {
+			go func() {
+				if err := metrics.Serve(ctx, metricsHandler, cfg.Metrics.Port); err != nil {
+					sLogger.Error("metrics server error", "err", err)
+				}
+			}()
 		}
 
 		/*----------Redis----------*/
@@ -119,13 +173,13 @@ var runCmd = &cobra.Command{
 		resetTokenRepository := repository.NewResetTokenRepository(redis)
 
 		/*----------Services----------*/
-		authService := service.NewAuthService(userRepository, cartRepository, tokenRepository, resetTokenRepository, googleOAuth, watermillPublisher, cfg, sLogger)
-		userService := service.NewUserService(userRepository)
-		categoryService := service.NewCategoryService(categoryRepository)
-		productService := service.NewProductService(productRepository, cacheRepository)
-		uploadService := service.NewUploadService(uploadStrategies)
-		cartService := service.NewCartService(cartRepository, cartItemRepository, productRepository)
-		orderService := service.NewOrderService(orderRepository, cartRepository, cartItemRepository, productRepository, db)
+		authService := service.NewAuthService(userRepository, cartRepository, tokenRepository, resetTokenRepository, googleOAuth, watermillPublisher, cfg, sLogger, authTracer)
+		userService := service.NewUserService(userRepository, userTracer)
+		categoryService := service.NewCategoryService(categoryRepository, categoryTracer)
+		productService := service.NewProductService(productRepository, cacheRepository, productTracer)
+		uploadService := service.NewUploadService(uploadStrategies, uploadTracer)
+		cartService := service.NewCartService(cartRepository, cartItemRepository, productRepository, cartTracer)
+		orderService := service.NewOrderService(orderRepository, cartRepository, cartItemRepository, productRepository, db, orderTracer)
 
 		/*----------GraphQL----------*/
 		graphQLResolver := resolver.NewResolver(
@@ -139,7 +193,8 @@ var runCmd = &cobra.Command{
 		)
 
 		gqlHandler := graphqlHandler.NewGraphQLHandler(graphQLResolver)
-		graphqlRoute := route.NewGraphQLRoute(gqlHandler, middlewares)
+		tracedGQLHandler := otelhttp.NewHandler(gqlHandler, "graphql")
+		graphqlRoute := route.NewGraphQLRoute(tracedGQLHandler, middlewares)
 
 		/*----------Handlers----------*/
 		healthHandler := handler.NewHealthCheckHandler(cfg)

@@ -24,7 +24,7 @@ func (r *mutationResolver) UploadProductImage(ctx context.Context, productId uin
 		return nil, errors.New("access denied")
 	}
 
-	url, err := r.uploadService.UploadProductImage(productId, image.File, image.Filename)
+	url, err := r.uploadService.UploadProductImage(ctx, productId, image.File, image.Filename)
 	if err != nil {
 		return nil, fmt.Errorf("upload failed: %w", err)
 	}

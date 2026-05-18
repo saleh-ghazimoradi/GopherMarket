@@ -8,11 +8,16 @@ import (
 	"github.com/ThreeDotsLabs/watermill-aws/sqs"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/saleh-ghazimoradi/GopherMarket/config"
+	"github.com/saleh-ghazimoradi/GopherMarket/infra/tracing"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/domain"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/dto"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/logger"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/service"
 	"github.com/saleh-ghazimoradi/GopherMarket/pkg/awsCfg"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -37,6 +42,17 @@ var notifierCmd = &cobra.Command{
 			sLogger.Error("failed to get config", "error", err)
 			return
 		}
+
+		tracerShutdown, err := tracing.Setup(ctx, cfg, "gophermarket-notifier")
+		if err != nil {
+			sLogger.Error("failed to setup tracing", "err", err)
+			return
+		}
+		defer func() {
+			if err := tracerShutdown(context.Background()); err != nil {
+				sLogger.Error("tracer shutdown error", "err", err)
+			}
+		}()
 
 		sLogger.Info("Starting notification service...")
 
@@ -92,20 +108,31 @@ var notifierCmd = &cobra.Command{
 func processMessage(cfg *config.Config, logger *slog.Logger, msg *message.Message, emailNotifier service.Notifier) error {
 	eventType := msg.Metadata.Get("event_type")
 
+	// Extract trace context from Watermill metadata
+	ctx := otel.GetTextMapPropagator().Extract(context.Background(),
+		propagation.MapCarrier(msg.Metadata))
+
+	tracer := otel.Tracer("gophermarket-notifier")
+	ctx, span := tracer.Start(ctx, "process_message",
+		trace.WithAttributes(
+			attribute.String("event.type", eventType),
+			attribute.String("message.id", msg.UUID),
+		))
+	defer span.End()
+
 	switch eventType {
 	case cfg.Event.UserLoggedIn:
-		return handleUserLoggedIn(logger, msg, emailNotifier)
+		return handleUserLoggedIn(ctx, logger, msg, emailNotifier)
 	case cfg.Event.PasswordResetRequested:
-		return handlePasswordResetRequested(logger, msg, emailNotifier)
+		return handlePasswordResetRequested(ctx, logger, msg, emailNotifier)
 	default:
-		logger.Error("Unknown event type", "type", eventType)
+		logger.ErrorContext(ctx, "Unknown event type", "type", eventType)
 		return nil
 	}
 }
 
-func handleUserLoggedIn(logger *slog.Logger, msg *message.Message, emailNotifier service.Notifier) error {
+func handleUserLoggedIn(ctx context.Context, logger *slog.Logger, msg *message.Message, notifier service.Notifier) error {
 	var user domain.User
-
 	if err := json.Unmarshal(msg.Payload, &user); err != nil {
 		return err
 	}
@@ -115,12 +142,11 @@ func handleUserLoggedIn(logger *slog.Logger, msg *message.Message, emailNotifier
 		userName = "User"
 	}
 
-	logger.Info("Sending login notification for", "email", user.Email)
-
-	return emailNotifier.SendLoginNotification(user.Email, userName)
+	logger.InfoContext(ctx, "Sending login notification", "email", user.Email)
+	return notifier.SendLoginNotification(ctx, user.Email, userName)
 }
 
-func handlePasswordResetRequested(logger *slog.Logger, msg *message.Message, emailNotifier service.Notifier) error {
+func handlePasswordResetRequested(ctx context.Context, logger *slog.Logger, msg *message.Message, notifier service.Notifier) error {
 	var event dto.PasswordResetEmailEvent
 	if err := json.Unmarshal(msg.Payload, &event); err != nil {
 		return err
@@ -132,9 +158,8 @@ func handlePasswordResetRequested(logger *slog.Logger, msg *message.Message, ema
 		Body:    fmt.Sprintf("Click the link to reset your password: %s", event.ResetLink),
 	}
 
-	logger.Info("Sending email notification for password reset")
-
-	return emailNotifier.Send(email)
+	logger.InfoContext(ctx, "Sending password reset email")
+	return notifier.Send(ctx, email)
 }
 
 func init() {

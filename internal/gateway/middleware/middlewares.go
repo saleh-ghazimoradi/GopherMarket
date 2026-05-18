@@ -7,6 +7,11 @@ import (
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/helper"
 	"github.com/saleh-ghazimoradi/GopherMarket/utils"
 	"github.com/tomasen/realip"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/time/rate"
 	"log/slog"
 	"net/http"
@@ -14,6 +19,16 @@ import (
 	"sync"
 	"time"
 )
+
+type responseWriter struct {
+	http.ResponseWriter
+	statusCode int
+}
+
+func (rw *responseWriter) WriteHeader(code int) {
+	rw.statusCode = code
+	rw.ResponseWriter.WriteHeader(code)
+}
 
 type client struct {
 	limiter  *rate.Limiter
@@ -33,7 +48,18 @@ type Middleware struct {
 
 func (m *Middleware) Logging(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		m.logger.Info("Incoming request: ", "method", r.Method, "path", r.URL.Path, "protocol", r.Proto, "remote_addr", r.RemoteAddr)
+		span := trace.SpanFromContext(r.Context())
+		traceID := span.SpanContext().TraceID().String()
+		spanID := span.SpanContext().SpanID().String()
+
+		m.logger.Info("Incoming request",
+			"method", r.Method,
+			"path", r.URL.Path,
+			"protocol", r.Proto,
+			"remote_addr", r.RemoteAddr,
+			"trace_id", traceID,
+			"span_id", spanID,
+		)
 		next.ServeHTTP(w, r)
 	})
 }
@@ -168,6 +194,62 @@ func (m *Middleware) GraphQLAuth(next http.Handler) http.Handler {
 			}
 		}
 		next.ServeHTTP(w, r)
+	})
+}
+
+func (m *Middleware) Tracing(next http.Handler) http.Handler {
+	return otelhttp.NewHandler(next, "gophermarket-http",
+		otelhttp.WithSpanNameFormatter(func(_ string, r *http.Request) string {
+			return r.Method + " " + r.URL.Path
+		}),
+		otelhttp.WithFilter(func(r *http.Request) bool {
+			return r.URL.Path != "/healthcheck" && !strings.HasPrefix(r.URL.Path, "/swagger")
+		}),
+	)
+}
+
+func (m *Middleware) Metrics(next http.Handler) http.Handler {
+	meter := otel.Meter("gophermarket-http")
+
+	requestCounter, _ := meter.Int64Counter(
+		"http_requests_total",
+		metric.WithDescription("Total number of HTTP requests"),
+	)
+	requestDuration, _ := meter.Float64Histogram(
+		"http_request_duration_seconds",
+		metric.WithDescription("Duration of HTTP requests in seconds"),
+		metric.WithExplicitBucketBoundaries(
+			0.005, // 5 ms
+			0.01,  // 10 ms
+			0.025, // 25 ms
+			0.05,  // 50 ms
+			0.1,   // 100 ms
+			0.25,  // 250 ms
+			0.5,   // 500 ms
+			1.0,   // 1 s
+			2.5,   // 2.5 s
+			5.0,   // 5 s
+			10.0,  // 10 s
+		),
+	)
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+
+		// Wrap ResponseWriter to capture status code
+		rw := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
+
+		defer func() {
+			duration := time.Since(start).Seconds()
+			attrs := metric.WithAttributes(
+				attribute.String("http.method", r.Method),
+				attribute.String("http.path", r.URL.Path),
+				attribute.Int("http.status_code", rw.statusCode),
+			)
+			requestDuration.Record(r.Context(), duration, attrs)
+			requestCounter.Add(r.Context(), 1, attrs)
+		}()
+		next.ServeHTTP(rw, r)
 	})
 }
 

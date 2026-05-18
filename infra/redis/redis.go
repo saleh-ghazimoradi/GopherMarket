@@ -3,6 +3,7 @@ package redis
 import (
 	"context"
 	"fmt"
+	"github.com/redis/go-redis/extra/redisotel/v9"
 	"github.com/redis/go-redis/v9"
 	"net"
 	"time"
@@ -97,6 +98,10 @@ func (r *Redis) Connect(ctx context.Context) (*redis.Client, error) {
 			return nil, fmt.Errorf("ping failed: %w (and failed to close: %v)", err, closeErr)
 		}
 		return nil, fmt.Errorf("redis ping failed: %w", err)
+	}
+
+	if err := redisotel.InstrumentTracing(client); err != nil {
+		return nil, fmt.Errorf("redis tracing instrumentation failed: %w", err)
 	}
 
 	return client, nil

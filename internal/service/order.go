@@ -8,6 +8,9 @@ import (
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/dto"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/helper"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/repository"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 	"gorm.io/gorm"
 )
 
@@ -23,9 +26,14 @@ type orderService struct {
 	cartItemRepository repository.CartItemRepository
 	productRepository  repository.ProductRepository
 	db                 *gorm.DB
+	tracer             trace.Tracer
 }
 
 func (o *orderService) CreateOrder(ctx context.Context, userId uint) (*dto.OrderResponse, error) {
+	ctx, span := o.tracer.Start(ctx, "OrderService.CreateOrder",
+		trace.WithAttributes(attribute.Int64("user.id", int64(userId))))
+	defer span.End()
+
 	var orderResponse dto.OrderResponse
 
 	err := o.db.Transaction(func(tx *gorm.DB) error {
@@ -54,13 +62,11 @@ func (o *orderService) CreateOrder(ctx context.Context, userId uint) (*dto.Order
 			}
 
 			item.Product.Stock -= item.Quantity
-
 			if err := productRepository.UpdateProduct(ctx, &item.Product); err != nil {
 				return err
 			}
 
 			totalAmount += float64(item.Quantity) * item.Product.Price
-
 			orderItems = append(orderItems, domain.OrderItem{
 				ProductId: item.Product.Id,
 				Quantity:  item.Quantity,
@@ -79,6 +85,11 @@ func (o *orderService) CreateOrder(ctx context.Context, userId uint) (*dto.Order
 			return fmt.Errorf("orderRepository.CreateOrder: %w", err)
 		}
 
+		span.SetAttributes(
+			attribute.Int64("order.id", int64(order.Id)),
+			attribute.Float64("order.total", totalAmount),
+		)
+
 		if err := cartItemRepository.ClearCartItems(ctx, cart.Id); err != nil {
 			return fmt.Errorf("cartItemRepository.ClearCartItems: %w", err)
 		}
@@ -94,6 +105,8 @@ func (o *orderService) CreateOrder(ctx context.Context, userId uint) (*dto.Order
 	})
 
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to create order")
 		return nil, fmt.Errorf("o.toOrderResp: %w", err)
 	}
 
@@ -101,8 +114,17 @@ func (o *orderService) CreateOrder(ctx context.Context, userId uint) (*dto.Order
 }
 
 func (o *orderService) GetOrder(ctx context.Context, userId, orderId uint) (*dto.OrderResponse, error) {
+	ctx, span := o.tracer.Start(ctx, "OrderService.GetOrder",
+		trace.WithAttributes(
+			attribute.Int64("user.id", int64(userId)),
+			attribute.Int64("order.id", int64(orderId)),
+		))
+	defer span.End()
+
 	order, err := o.orderRepository.GetOrderByUserId(ctx, userId, orderId)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "order not found")
 		return nil, fmt.Errorf("o.orderRepository.GetOrderByUserId: %w", err)
 	}
 
@@ -110,14 +132,20 @@ func (o *orderService) GetOrder(ctx context.Context, userId, orderId uint) (*dto
 }
 
 func (o *orderService) GetOrders(ctx context.Context, userId uint, page, limit int) ([]*dto.OrderResponse, *helper.PaginatedMeta, error) {
+	ctx, span := o.tracer.Start(ctx, "OrderService.GetOrders",
+		trace.WithAttributes(
+			attribute.Int64("user.id", int64(userId)),
+			attribute.Int("page", page),
+			attribute.Int("limit", limit),
+		))
+	defer span.End()
+
 	if page < 1 {
 		page = 1
 	}
-
 	if limit < 1 {
 		limit = 10
 	}
-
 	if limit > 100 {
 		limit = 100
 	}
@@ -126,11 +154,15 @@ func (o *orderService) GetOrders(ctx context.Context, userId uint, page, limit i
 
 	total, err := o.orderRepository.CountUserOrders(ctx, userId)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to count orders")
 		return nil, nil, fmt.Errorf("o.orderRepository.CountUserOrders: %w", err)
 	}
 
 	orders, err := o.orderRepository.GetUserOrders(ctx, userId, offset, limit)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to get orders")
 		return nil, nil, fmt.Errorf("o.orderRepository.GetUserOrders: %w", err)
 	}
 
@@ -140,7 +172,6 @@ func (o *orderService) GetOrders(ctx context.Context, userId uint, page, limit i
 	}
 
 	totalPage := int((total + int64(limit) - 1) / int64(limit))
-
 	meta := &helper.PaginatedMeta{
 		Page:      page,
 		Limit:     limit,
@@ -190,12 +221,13 @@ func (o *orderService) toOrderResp(order *domain.Order) *dto.OrderResponse {
 	}
 }
 
-func NewOrderService(orderRepository repository.OrderRepository, cartRepository repository.CartRepository, cartItemRepository repository.CartItemRepository, productRepository repository.ProductRepository, db *gorm.DB) OrderService {
+func NewOrderService(orderRepository repository.OrderRepository, cartRepository repository.CartRepository, cartItemRepository repository.CartItemRepository, productRepository repository.ProductRepository, db *gorm.DB, tracer trace.Tracer) OrderService {
 	return &orderService{
 		orderRepository:    orderRepository,
 		cartRepository:     cartRepository,
 		cartItemRepository: cartItemRepository,
 		productRepository:  productRepository,
 		db:                 db,
+		tracer:             tracer,
 	}
 }

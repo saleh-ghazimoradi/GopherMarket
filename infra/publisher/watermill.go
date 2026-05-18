@@ -10,6 +10,8 @@ import (
 	"github.com/goccy/go-json"
 	"github.com/saleh-ghazimoradi/GopherMarket/config"
 	"github.com/saleh-ghazimoradi/GopherMarket/pkg/awsCfg"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
 )
 
 type watermillPublisher struct {
@@ -18,6 +20,12 @@ type watermillPublisher struct {
 }
 
 func (w *watermillPublisher) Publish(ctx context.Context, eventType string, payload any, metadata map[string]string) error {
+	carrier := propagation.MapCarrier{}
+	otel.GetTextMapPropagator().Inject(ctx, carrier)
+	for k, v := range carrier {
+		metadata[k] = v
+	}
+
 	data, err := json.Marshal(payload)
 	if err != nil {
 		return err

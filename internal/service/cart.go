@@ -6,6 +6,9 @@ import (
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/domain"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/dto"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/repository"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type CartService interface {
@@ -19,11 +22,18 @@ type cartService struct {
 	cartRepository     repository.CartRepository
 	cartItemRepository repository.CartItemRepository
 	productRepository  repository.ProductRepository
+	tracer             trace.Tracer
 }
 
 func (c *cartService) GetCart(ctx context.Context, userId uint) (*dto.CartResponse, error) {
+	ctx, span := c.tracer.Start(ctx, "CartService.GetCart",
+		trace.WithAttributes(attribute.Int64("user.id", int64(userId))))
+	defer span.End()
+
 	cart, err := c.cartRepository.GetCartByUserId(ctx, userId)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to get cart")
 		return nil, err
 	}
 
@@ -31,17 +41,30 @@ func (c *cartService) GetCart(ctx context.Context, userId uint) (*dto.CartRespon
 }
 
 func (c *cartService) AddToCart(ctx context.Context, userId uint, req *dto.AddToCartRequest) (*dto.CartResponse, error) {
+	ctx, span := c.tracer.Start(ctx, "CartService.AddToCart",
+		trace.WithAttributes(
+			attribute.Int64("user.id", int64(userId)),
+			attribute.Int64("product.id", int64(req.ProductId)),
+			attribute.Int("product.quantity", req.Quantity),
+		))
+	defer span.End()
+
 	product, err := c.productRepository.GetProductById(ctx, req.ProductId)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "product not found")
 		return nil, errors.New("product not found")
 	}
 
 	if product.Stock < req.Quantity {
+		span.SetStatus(codes.Error, "not enough stock")
 		return nil, errors.New("not enough stock")
 	}
 
 	cart, err := c.cartRepository.GetOrCreateCart(ctx, userId)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to get or create cart")
 		return nil, err
 	}
 
@@ -56,6 +79,7 @@ func (c *cartService) AddToCart(ctx context.Context, userId uint, req *dto.AddTo
 	} else {
 		cartItem.Quantity += req.Quantity
 		if cartItem.Quantity > product.Stock {
+			span.SetStatus(codes.Error, "not enough stock")
 			return nil, errors.New("not enough stock")
 		}
 		_ = c.cartItemRepository.UpdateCartItem(ctx, cartItem)
@@ -65,22 +89,36 @@ func (c *cartService) AddToCart(ctx context.Context, userId uint, req *dto.AddTo
 }
 
 func (c *cartService) UpdateCartItem(ctx context.Context, userId, itemId uint, req *dto.UpdateCartItemRequest) (*dto.CartResponse, error) {
+	ctx, span := c.tracer.Start(ctx, "CartService.UpdateCartItem",
+		trace.WithAttributes(
+			attribute.Int64("user.id", int64(userId)),
+			attribute.Int64("item.id", int64(itemId)),
+		))
+	defer span.End()
+
 	cartItem, err := c.cartItemRepository.GetCartItemWithUser(ctx, userId, itemId)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "cart item not found")
 		return nil, err
 	}
 
 	product, err := c.productRepository.GetProductById(ctx, cartItem.ProductId)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "product not found")
 		return nil, err
 	}
 
 	if product.Stock < req.Quantity {
+		span.SetStatus(codes.Error, "not enough stock")
 		return nil, errors.New("not enough stock")
 	}
 
 	cartItem.Quantity = req.Quantity
 	if err := c.cartItemRepository.UpdateCartItem(ctx, cartItem); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to update cart item")
 		return nil, err
 	}
 
@@ -88,7 +126,19 @@ func (c *cartService) UpdateCartItem(ctx context.Context, userId, itemId uint, r
 }
 
 func (c *cartService) RemoveFromCart(ctx context.Context, userId, itemId uint) error {
-	return c.cartItemRepository.DeleteCartItem(ctx, userId, itemId)
+	ctx, span := c.tracer.Start(ctx, "CartService.RemoveFromCart",
+		trace.WithAttributes(
+			attribute.Int64("user.id", int64(userId)),
+			attribute.Int64("item.id", int64(itemId)),
+		))
+	defer span.End()
+
+	if err := c.cartItemRepository.DeleteCartItem(ctx, userId, itemId); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to remove item")
+		return err
+	}
+	return nil
 }
 
 func (c *cartService) convertToCartResponse(cart *domain.Cart) *dto.CartResponse {
@@ -133,10 +183,11 @@ func (c *cartService) convertToCartResponse(cart *domain.Cart) *dto.CartResponse
 	}
 }
 
-func NewCartService(cartRepository repository.CartRepository, cartItemRepository repository.CartItemRepository, productRepository repository.ProductRepository) CartService {
+func NewCartService(cartRepository repository.CartRepository, cartItemRepository repository.CartItemRepository, productRepository repository.ProductRepository, tracer trace.Tracer) CartService {
 	return &cartService{
 		cartRepository:     cartRepository,
 		cartItemRepository: cartItemRepository,
 		productRepository:  productRepository,
+		tracer:             tracer,
 	}
 }

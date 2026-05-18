@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"go.opentelemetry.io/otel/codes"
+	"time"
+
 	"github.com/saleh-ghazimoradi/GopherMarket/config"
 	"github.com/saleh-ghazimoradi/GopherMarket/infra/publisher"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/domain"
@@ -11,8 +14,9 @@ import (
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/repository"
 	"github.com/saleh-ghazimoradi/GopherMarket/pkg/oauth"
 	"github.com/saleh-ghazimoradi/GopherMarket/utils"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"log/slog"
-	"time"
 )
 
 type AuthService interface {
@@ -34,15 +38,25 @@ type authService struct {
 	publisher            publisher.Publisher
 	cfg                  *config.Config
 	logger               *slog.Logger
+	tracer               trace.Tracer
 }
 
 func (a *authService) Register(ctx context.Context, req *dto.RegisterRequest) (*dto.AuthResponse, error) {
+	ctx, span := a.tracer.Start(ctx, "AuthService.Register",
+		trace.WithAttributes(
+			attribute.String("user.email", req.Email),
+		))
+	defer span.End()
+
 	if _, err := a.userRepository.GetUserByEmail(ctx, req.Email); err == nil {
+		span.SetStatus(codes.Error, "user already exists")
 		return nil, repository.ErrsAlreadyExists
 	}
 
 	hashedPassword, err := utils.HashPassword(req.Password)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to hash password")
 		return nil, fmt.Errorf("failed to hash password: %w", err)
 	}
 
@@ -56,11 +70,16 @@ func (a *authService) Register(ctx context.Context, req *dto.RegisterRequest) (*
 	}
 
 	if err := a.userRepository.CreateUser(ctx, user); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to create user")
 		return nil, fmt.Errorf("faield to create user: %w", err)
 	}
+	span.SetAttributes(attribute.Int64("user.id", int64(user.Id)))
 
 	cart := &domain.Cart{UserId: user.Id}
 	if err := a.cartRepository.CreateCart(ctx, cart); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to create cart")
 		return nil, fmt.Errorf("faield to create cart: %w", err)
 	}
 
@@ -68,16 +87,28 @@ func (a *authService) Register(ctx context.Context, req *dto.RegisterRequest) (*
 }
 
 func (a *authService) Login(ctx context.Context, req *dto.LoginRequest) (*dto.AuthResponse, error) {
+	ctx, span := a.tracer.Start(ctx, "AuthService.Login",
+		trace.WithAttributes(
+			attribute.String("user.email", req.Email),
+		))
+	defer span.End()
+
 	user, err := a.userRepository.GetUserByEmailAndActive(ctx, req.Email, true)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to get user")
 		return nil, fmt.Errorf("faield to get user: %w", err)
 	}
 
 	if !utils.CheckPasswordHash(*user.Password, req.Password) {
+		span.SetStatus(codes.Error, "invalid credentials")
 		return nil, fmt.Errorf("invalid credentials")
 	}
+	span.SetAttributes(attribute.Int64("user.id", int64(user.Id)))
 
 	if err := a.toPublish(ctx, user); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to publish user")
 		return nil, fmt.Errorf("faield to publish user: %w", err)
 	}
 
@@ -85,13 +116,21 @@ func (a *authService) Login(ctx context.Context, req *dto.LoginRequest) (*dto.Au
 }
 
 func (a *authService) GoogleLogin(ctx context.Context, req *dto.GoogleLoginRequest) (*dto.AuthResponse, error) {
+	ctx, span := a.tracer.Start(ctx, "AuthService.GoogleLogin")
+	defer span.End()
+
 	info, err := a.googleOAuth.Verify(ctx, req.Credential)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "google oauth verify failed")
 		return nil, fmt.Errorf("google login: %w", err)
 	}
+	span.SetAttributes(attribute.String("user.email", info.Email))
 
 	user, err := a.userRepository.GetUserByEmail(ctx, info.Email)
 	if err != nil && !errors.Is(err, repository.ErrsNotFound) {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to lookup user")
 		return nil, fmt.Errorf("google login: %w", err)
 	}
 
@@ -108,13 +147,20 @@ func (a *authService) GoogleLogin(ctx context.Context, req *dto.GoogleLoginReque
 		}
 
 		if err := a.userRepository.CreateUser(ctx, user); err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, "failed to create user")
 			return nil, fmt.Errorf("google login: create user: %w", err)
 		}
+		span.SetAttributes(attribute.Int64("user.id", int64(user.Id)))
+
 		cart := &domain.Cart{UserId: user.Id}
 		if err := a.cartRepository.CreateCart(ctx, cart); err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, "failed to create cart")
 			return nil, fmt.Errorf("google login: create cart: %w", err)
 		}
 	} else {
+		span.SetAttributes(attribute.Int64("user.id", int64(user.Id)))
 		if user.AuthProvider == nil {
 			user.AuthProvider = &provider
 			_ = a.userRepository.UpdateUser(ctx, user)
@@ -125,17 +171,26 @@ func (a *authService) GoogleLogin(ctx context.Context, req *dto.GoogleLoginReque
 }
 
 func (a *authService) ForgotPassword(ctx context.Context, req *dto.ForgotPasswordRequest) error {
+	ctx, span := a.tracer.Start(ctx, "AuthService.ForgotPassword",
+		trace.WithAttributes(attribute.String("user.email", req.Email)))
+	defer span.End()
+
 	user, err := a.userRepository.GetUserByEmail(ctx, req.Email)
 	if err != nil || user == nil || user.Password == nil {
 		return nil
 	}
+	span.SetAttributes(attribute.Int64("user.id", int64(user.Id)))
 
 	token, err := utils.GenerateHexToken()
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to generate reset token")
 		return err
 	}
 
 	if err := a.resetTokenRepository.Store(ctx, token, user.Id, time.Hour); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to store reset token")
 		return fmt.Errorf("failed to store reset token: %w", err)
 	}
 
@@ -147,30 +202,44 @@ func (a *authService) ForgotPassword(ctx context.Context, req *dto.ForgotPasswor
 	}
 
 	if err := a.publisher.Publish(ctx, a.cfg.Event.PasswordResetRequested, eventPayload, map[string]string{}); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to publish password reset event")
 		return fmt.Errorf("failed to publish password reset event: %w", err)
 	}
 	return nil
 }
 
 func (a *authService) ResetPassword(ctx context.Context, req *dto.ResetPasswordRequest) error {
+	ctx, span := a.tracer.Start(ctx, "AuthService.ResetPassword")
+	defer span.End()
+
 	userId, err := a.resetTokenRepository.VerifyAndDelete(ctx, req.Token)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "invalid reset token")
 		return err
 	}
+	span.SetAttributes(attribute.Int64("user.id", int64(userId)))
 
 	user, err := a.userRepository.GetUserById(ctx, userId)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "user not found")
 		return fmt.Errorf("user not found")
 	}
 
 	hashed, err := utils.HashPassword(req.Password)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to hash password")
 		return fmt.Errorf("failed to hash password: %w", err)
 	}
 
 	user.Password = &hashed
 
 	if err := a.userRepository.UpdateUser(ctx, user); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to update password")
 		return fmt.Errorf("faield to update password: %w", err)
 	}
 
@@ -182,22 +251,34 @@ func (a *authService) ResetPassword(ctx context.Context, req *dto.ResetPasswordR
 }
 
 func (a *authService) RefreshToken(ctx context.Context, req *dto.RefreshTokenRequest) (*dto.AuthResponse, error) {
+	ctx, span := a.tracer.Start(ctx, "AuthService.RefreshToken")
+	defer span.End()
+
 	claims, err := utils.ValidateToken(req.RefreshToken, a.cfg.JWT.Secret)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "invalid refresh token")
 		return nil, fmt.Errorf("faield to validate refresh token: %w", err)
 	}
+	span.SetAttributes(attribute.Int64("user.id", int64(claims.UserId)))
 
 	refToken, err := a.tokenRepository.GetValidRefreshToken(ctx, req.RefreshToken)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "invalid or expired refresh token")
 		return nil, fmt.Errorf("failed to get valid refresh token: %w", err)
 	}
 
 	user, err := a.userRepository.GetUserById(ctx, claims.UserId)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "user not found")
 		return nil, fmt.Errorf("faield to get user: %w", err)
 	}
 
 	if err := a.tokenRepository.DeleteTokenById(ctx, refToken.Id); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to revoke old token")
 		return nil, fmt.Errorf("faield to delete token: %w", err)
 	}
 
@@ -205,7 +286,12 @@ func (a *authService) RefreshToken(ctx context.Context, req *dto.RefreshTokenReq
 }
 
 func (a *authService) Logout(ctx context.Context, req *dto.LogoutRequest) error {
+	ctx, span := a.tracer.Start(ctx, "AuthService.Logout")
+	defer span.End()
+
 	if err := a.tokenRepository.DeleteToken(ctx, req.RefreshToken); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to logout")
 		return fmt.Errorf("failed to log out: %w", err)
 	}
 	return nil
@@ -251,7 +337,17 @@ func (a *authService) generateAuthResponse(ctx context.Context, user *domain.Use
 	}, nil
 }
 
-func NewAuthService(userRepository repository.UserRepository, cartRepository repository.CartRepository, tokenRepository repository.TokenRepository, resetTokenRepository repository.ResetTokenRepository, googleOAuth oauth.Provider, publisher publisher.Publisher, cfg *config.Config, logger *slog.Logger) AuthService {
+func NewAuthService(
+	userRepository repository.UserRepository,
+	cartRepository repository.CartRepository,
+	tokenRepository repository.TokenRepository,
+	resetTokenRepository repository.ResetTokenRepository,
+	googleOAuth oauth.Provider,
+	publisher publisher.Publisher,
+	cfg *config.Config,
+	logger *slog.Logger,
+	tracer trace.Tracer,
+) AuthService {
 	return &authService{
 		userRepository:       userRepository,
 		cartRepository:       cartRepository,
@@ -261,5 +357,6 @@ func NewAuthService(userRepository repository.UserRepository, cartRepository rep
 		publisher:            publisher,
 		cfg:                  cfg,
 		logger:               logger,
+		tracer:               tracer,
 	}
 }

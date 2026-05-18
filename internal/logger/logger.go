@@ -3,10 +3,12 @@ package logger
 import (
 	"log/slog"
 	"os"
+
+	slogotel "github.com/remychantenay/slog-otel"
 )
 
 func NewSlogLogger() *slog.Logger {
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+	jsonHandler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
 			if len(groups) == 0 && a.Key == slog.TimeKey {
 				t := a.Value.Time()
@@ -14,6 +16,12 @@ func NewSlogLogger() *slog.Logger {
 			}
 			return a
 		},
-	}))
-	return logger
+	})
+
+	// slog-otel injects trace_id, span_id from the context automatically
+	otelHandler := slogotel.OtelHandler{
+		Next: jsonHandler,
+	}
+
+	return slog.New(otelHandler)
 }
