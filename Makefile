@@ -30,9 +30,15 @@ notifier: fmt vet
 run: fmt vet
 	go run . run
 
-build:
+build-ecommerce:
 	mkdir -p bin
-	go build -o bin/gopherMarket
+	go build -o bin/ecommerce
+
+build-notifier:
+	mkdir -p bin
+	go build -o bin/notifier
+
+build: build-ecommerce build-notifier
 
 lint:
 	golangci-lint run ./...
