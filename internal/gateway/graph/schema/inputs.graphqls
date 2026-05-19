@@ -24,14 +24,6 @@ input ResetPasswordInput {
     password: String!
 }
 
-input RefreshTokenInput {
-    refresh_token: String!
-}
-
-input LogoutInput {
-    refresh_token: String!
-}
-
 input UpdateProfileInput {
     first_name: String
     last_name: String

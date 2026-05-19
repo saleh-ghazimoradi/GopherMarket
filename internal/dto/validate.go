@@ -67,14 +67,6 @@ func ValidateLoginRequest(v *helper.Validator, req *LoginRequest) {
 	validatePassword(v, req.Password)
 }
 
-func ValidateRefreshTokenRequest(v *helper.Validator, req *RefreshTokenRequest) {
-	validateRefreshToken(v, req.RefreshToken)
-}
-
-func ValidateLogoutRequest(v *helper.Validator, req *LogoutRequest) {
-	validateRefreshToken(v, req.RefreshToken)
-}
-
 func ValidateUpdateProfileRequest(v *helper.Validator, req *UpdateProfileRequest) {
 	if req.FirstName != nil {
 		validateFirstNameAndLastName(v, *req.FirstName)

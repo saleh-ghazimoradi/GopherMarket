@@ -13,10 +13,6 @@ type LoginRequest struct {
 	Password string `json:"password"`
 }
 
-type LogoutRequest struct {
-	RefreshToken string `json:"refresh_token"`
-}
-
 type GoogleLoginRequest struct {
 	Credential string `json:"credential"`
 }
@@ -31,7 +27,6 @@ type ResetPasswordRequest struct {
 }
 
 type AuthResponse struct {
-	User         UserResponse `json:"user"`
-	AccessToken  string       `json:"access_token"`
-	RefreshToken string       `json:"refresh_token"`
+	User        UserResponse `json:"user"`
+	AccessToken string       `json:"access_token"`
 }

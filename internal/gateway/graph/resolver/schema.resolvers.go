@@ -9,10 +9,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/dto"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/gateway/graph"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/gateway/graph/model"
+	"github.com/saleh-ghazimoradi/GopherMarket/internal/gateway/middleware"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/helper"
 	"github.com/saleh-ghazimoradi/GopherMarket/utils"
 )
@@ -25,12 +27,16 @@ func (r *mutationResolver) Register(ctx context.Context, input dto.RegisterReque
 		return nil, helper.NewValidateError(v)
 	}
 
-	register, err := r.authService.Register(ctx, &input)
+	authResp, refreshToken, err := r.authService.Register(ctx, &input)
 	if err != nil {
 		return nil, fmt.Errorf("register error: %w", err)
 	}
 
-	return register, nil
+	// Set the cookie
+	if w, ok := ctx.Value(middleware.HTTPResponseKey).(http.ResponseWriter); ok {
+		r.setRefreshTokenCookie(w, refreshToken)
+	}
+	return authResp, nil
 }
 
 // Login is the resolver for the login field.
@@ -41,12 +47,15 @@ func (r *mutationResolver) Login(ctx context.Context, input dto.LoginRequest) (*
 		return nil, helper.NewValidateError(v)
 	}
 
-	login, err := r.authService.Login(ctx, &input)
+	authResp, refreshToken, err := r.authService.Login(ctx, &input)
 	if err != nil {
 		return nil, fmt.Errorf("login error: %w", err)
 	}
 
-	return login, nil
+	if w, ok := ctx.Value(middleware.HTTPResponseKey).(http.ResponseWriter); ok {
+		r.setRefreshTokenCookie(w, refreshToken)
+	}
+	return authResp, nil
 }
 
 // GoogleLogin is the resolver for the googleLogin field.
@@ -57,12 +66,15 @@ func (r *mutationResolver) GoogleLogin(ctx context.Context, input dto.GoogleLogi
 		return nil, helper.NewValidateError(v)
 	}
 
-	googleLogin, err := r.authService.GoogleLogin(ctx, &input)
+	authResp, refreshToken, err := r.authService.GoogleLogin(ctx, &input)
 	if err != nil {
 		return nil, fmt.Errorf("google oauth login error: %w", err)
 	}
 
-	return googleLogin, nil
+	if w, ok := ctx.Value(middleware.HTTPResponseKey).(http.ResponseWriter); ok {
+		r.setRefreshTokenCookie(w, refreshToken)
+	}
+	return authResp, nil
 }
 
 // ForgotPassword is the resolver for the forgotPassword field.
@@ -96,31 +108,40 @@ func (r *mutationResolver) ResetPassword(ctx context.Context, input dto.ResetPas
 }
 
 // RefreshToken is the resolver for the refreshToken field.
-func (r *mutationResolver) RefreshToken(ctx context.Context, input dto.RefreshTokenRequest) (*dto.AuthResponse, error) {
-	v := helper.NewValidator()
-	dto.ValidateRefreshTokenRequest(v, &input)
-	if !v.Valid() {
-		return nil, helper.NewValidateError(v)
+func (r *mutationResolver) RefreshToken(ctx context.Context) (*dto.AuthResponse, error) {
+	// Read cookie from injected request
+	req, ok := ctx.Value(middleware.HTTPRequestKey).(*http.Request)
+	if !ok {
+		return nil, errors.New("internal error: no request in context")
+	}
+	cookie, err := req.Cookie("refresh_token")
+	if err != nil {
+		return nil, errors.New("refresh token missing")
 	}
 
-	refreshToken, err := r.authService.RefreshToken(ctx, &input)
+	authResp, newToken, err := r.authService.RefreshToken(ctx, cookie.Value)
 	if err != nil {
 		return nil, fmt.Errorf("refresh token error: %w", err)
 	}
 
-	return refreshToken, nil
+	// Set new cookie
+	if w, ok := ctx.Value(middleware.HTTPResponseKey).(http.ResponseWriter); ok {
+		r.setRefreshTokenCookie(w, newToken)
+	}
+	return authResp, nil
 }
 
 // Logout is the resolver for the logout field.
-func (r *mutationResolver) Logout(ctx context.Context, input dto.LogoutRequest) (bool, error) {
-	v := helper.NewValidator()
-	dto.ValidateLogoutRequest(v, &input)
-	if !v.Valid() {
-		return false, helper.NewValidateError(v)
+func (r *mutationResolver) Logout(ctx context.Context) (bool, error) {
+	req, _ := ctx.Value(middleware.HTTPRequestKey).(*http.Request)
+	if req != nil {
+		if cookie, err := req.Cookie("refresh_token"); err == nil {
+			_ = r.authService.Logout(ctx, cookie.Value)
+		}
 	}
 
-	if err := r.authService.Logout(ctx, &input); err != nil {
-		return false, fmt.Errorf("logout error: %w", err)
+	if w, ok := ctx.Value(middleware.HTTPResponseKey).(http.ResponseWriter); ok {
+		r.clearRefreshTokenCookie(w)
 	}
 	return true, nil
 }

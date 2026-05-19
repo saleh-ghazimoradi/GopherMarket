@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"fmt"
 	"github.com/saleh-ghazimoradi/GopherMarket/config"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/domain"
@@ -180,12 +181,17 @@ func (m *Middleware) Admin(next http.Handler) http.Handler {
 
 func (m *Middleware) GraphQLAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// store response writer and request in context
+		ctx := context.WithValue(r.Context(), HTTPResponseKey, w)
+		ctx = context.WithValue(ctx, HTTPRequestKey, r)
+		r = r.WithContext(ctx)
+
 		authorization := r.Header.Get("Authorization")
 		if authorization != "" {
 			tokenParts := strings.Split(authorization, " ")
 			if len(tokenParts) == 2 && tokenParts[0] == "Bearer" {
 				if claims, err := utils.ValidateToken(tokenParts[1], m.cfg.JWT.Secret); err == nil {
-					ctx := r.Context()
+					ctx = r.Context()
 					ctx = utils.WithUserId(ctx, claims.UserId)
 					ctx = utils.WithEmailKey(ctx, claims.Email)
 					ctx = utils.WithRoleKey(ctx, claims.Role)

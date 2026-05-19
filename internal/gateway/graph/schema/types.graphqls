@@ -16,7 +16,6 @@ type User {
 type AuthPayload {
     user: User!
     access_token: String!
-    refresh_token: String!
 }
 
 type Category {

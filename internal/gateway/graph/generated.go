@@ -48,9 +48,8 @@ type DirectiveRoot struct {
 
 type ComplexityRoot struct {
 	AuthPayload struct {
-		AccessToken  func(childComplexity int) int
-		RefreshToken func(childComplexity int) int
-		User         func(childComplexity int) int
+		AccessToken func(childComplexity int) int
+		User        func(childComplexity int) int
 	}
 
 	Cart struct {
@@ -90,8 +89,8 @@ type ComplexityRoot struct {
 		ForgotPassword     func(childComplexity int, input dto.ForgotPasswordRequest) int
 		GoogleLogin        func(childComplexity int, input dto.GoogleLoginRequest) int
 		Login              func(childComplexity int, input dto.LoginRequest) int
-		Logout             func(childComplexity int, input dto.LogoutRequest) int
-		RefreshToken       func(childComplexity int, input dto.RefreshTokenRequest) int
+		Logout             func(childComplexity int) int
+		RefreshToken       func(childComplexity int) int
 		Register           func(childComplexity int, input dto.RegisterRequest) int
 		RemoveFromCart     func(childComplexity int, id string) int
 		ResetPassword      func(childComplexity int, input dto.ResetPasswordRequest) int
@@ -207,8 +206,8 @@ type MutationResolver interface {
 	GoogleLogin(ctx context.Context, input dto.GoogleLoginRequest) (*dto.AuthResponse, error)
 	ForgotPassword(ctx context.Context, input dto.ForgotPasswordRequest) (bool, error)
 	ResetPassword(ctx context.Context, input dto.ResetPasswordRequest) (bool, error)
-	RefreshToken(ctx context.Context, input dto.RefreshTokenRequest) (*dto.AuthResponse, error)
-	Logout(ctx context.Context, input dto.LogoutRequest) (bool, error)
+	RefreshToken(ctx context.Context) (*dto.AuthResponse, error)
+	Logout(ctx context.Context) (bool, error)
 	UpdateProfile(ctx context.Context, input dto.UpdateProfileRequest) (*dto.UserResponse, error)
 	CreateCategory(ctx context.Context, input dto.CreateCategoryRequest) (*dto.CategoryResponse, error)
 	UpdateCategory(ctx context.Context, id string, input dto.UpdateCategoryRequest) (*dto.CategoryResponse, error)
@@ -269,12 +268,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.AuthPayload.AccessToken(childComplexity), true
-	case "AuthPayload.refresh_token":
-		if e.ComplexityRoot.AuthPayload.RefreshToken == nil {
-			break
-		}
-
-		return e.ComplexityRoot.AuthPayload.RefreshToken(childComplexity), true
 	case "AuthPayload.user":
 		if e.ComplexityRoot.AuthPayload.User == nil {
 			break
@@ -492,23 +485,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			break
 		}
 
-		args, err := ec.field_Mutation_logout_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.ComplexityRoot.Mutation.Logout(childComplexity, args["input"].(dto.LogoutRequest)), true
+		return e.ComplexityRoot.Mutation.Logout(childComplexity), true
 	case "Mutation.refreshToken":
 		if e.ComplexityRoot.Mutation.RefreshToken == nil {
 			break
 		}
 
-		args, err := ec.field_Mutation_refreshToken_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.ComplexityRoot.Mutation.RefreshToken(childComplexity, args["input"].(dto.RefreshTokenRequest)), true
+		return e.ComplexityRoot.Mutation.RefreshToken(childComplexity), true
 	case "Mutation.register":
 		if e.ComplexityRoot.Mutation.Register == nil {
 			break
@@ -974,8 +957,6 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputForgotPasswordInput,
 		ec.unmarshalInputGoogleLoginInput,
 		ec.unmarshalInputLoginInput,
-		ec.unmarshalInputLogoutInput,
-		ec.unmarshalInputRefreshTokenInput,
 		ec.unmarshalInputRegisterInput,
 		ec.unmarshalInputResetPasswordInput,
 		ec.unmarshalInputUpdateCartItemInput,
@@ -1086,8 +1067,6 @@ func (ec *executionContext) childFields_AuthPayload(ctx context.Context, field g
 		return ec.fieldContext_AuthPayload_user(ctx, field)
 	case "access_token":
 		return ec.fieldContext_AuthPayload_access_token(ctx, field)
-	case "refresh_token":
-		return ec.fieldContext_AuthPayload_refresh_token(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type AuthPayload", field.Name)
 }
@@ -1530,34 +1509,6 @@ func (ec *executionContext) field_Mutation_login_args(ctx context.Context, rawAr
 	return args, nil
 }
 
-func (ec *executionContext) field_Mutation_logout_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input",
-		func(ctx context.Context, v any) (dto.LogoutRequest, error) {
-			return ec.unmarshalNLogoutInput2githubᚗcomᚋsalehᚑghazimoradiᚋGopherMarketᚋinternalᚋdtoᚐLogoutRequest(ctx, v)
-		})
-	if err != nil {
-		return nil, err
-	}
-	args["input"] = arg0
-	return args, nil
-}
-
-func (ec *executionContext) field_Mutation_refreshToken_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input",
-		func(ctx context.Context, v any) (dto.RefreshTokenRequest, error) {
-			return ec.unmarshalNRefreshTokenInput2githubᚗcomᚋsalehᚑghazimoradiᚋGopherMarketᚋinternalᚋdtoᚐRefreshTokenRequest(ctx, v)
-		})
-	if err != nil {
-		return nil, err
-	}
-	args["input"] = arg0
-	return args, nil
-}
-
 func (ec *executionContext) field_Mutation_register_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -1904,29 +1855,6 @@ func (ec *executionContext) _AuthPayload_access_token(ctx context.Context, field
 	)
 }
 func (ec *executionContext) fieldContext_AuthPayload_access_token(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	return graphql.NewScalarFieldContext("AuthPayload", field, false, false, errors.New("field of type String does not have child fields"))
-}
-
-func (ec *executionContext) _AuthPayload_refresh_token(ctx context.Context, field graphql.CollectedField, obj *dto.AuthResponse) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_AuthPayload_refresh_token(ctx, field)
-		},
-		func(ctx context.Context) (any, error) {
-			return obj.RefreshToken, nil
-		},
-		nil,
-		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
-			return ec.marshalNString2string(ctx, selections, v)
-		},
-		true,
-		true,
-	)
-}
-func (ec *executionContext) fieldContext_AuthPayload_refresh_token(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("AuthPayload", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
@@ -2591,8 +2519,7 @@ func (ec *executionContext) _Mutation_refreshToken(ctx context.Context, field gr
 			return ec.fieldContext_Mutation_refreshToken(ctx, field)
 		},
 		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Mutation().RefreshToken(ctx, fc.Args["input"].(dto.RefreshTokenRequest))
+			return ec.Resolvers.Mutation().RefreshToken(ctx)
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v *dto.AuthResponse) graphql.Marshaler {
@@ -2602,7 +2529,7 @@ func (ec *executionContext) _Mutation_refreshToken(ctx context.Context, field gr
 		true,
 	)
 }
-func (ec *executionContext) fieldContext_Mutation_refreshToken(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Mutation_refreshToken(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Mutation",
 		Field:      field,
@@ -2611,17 +2538,6 @@ func (ec *executionContext) fieldContext_Mutation_refreshToken(ctx context.Conte
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return ec.childFields_AuthPayload(ctx, field)
 		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_refreshToken_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
 	}
 	return fc, nil
 }
@@ -2635,8 +2551,7 @@ func (ec *executionContext) _Mutation_logout(ctx context.Context, field graphql.
 			return ec.fieldContext_Mutation_logout(ctx, field)
 		},
 		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Mutation().Logout(ctx, fc.Args["input"].(dto.LogoutRequest))
+			return ec.Resolvers.Mutation().Logout(ctx)
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
@@ -2646,28 +2561,8 @@ func (ec *executionContext) _Mutation_logout(ctx context.Context, field graphql.
 		true,
 	)
 }
-func (ec *executionContext) fieldContext_Mutation_logout(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_logout_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
+func (ec *executionContext) fieldContext_Mutation_logout(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Mutation", field, true, true, errors.New("field of type Boolean does not have child fields"))
 }
 
 func (ec *executionContext) _Mutation_updateProfile(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -6023,66 +5918,6 @@ func (ec *executionContext) unmarshalInputLoginInput(ctx context.Context, obj an
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputLogoutInput(ctx context.Context, obj any) (dto.LogoutRequest, error) {
-	var it dto.LogoutRequest
-	if obj == nil {
-		return it, nil
-	}
-
-	asMap := map[string]any{}
-	for k, v := range obj.(map[string]any) {
-		asMap[k] = v
-	}
-
-	fieldsInOrder := [...]string{"refresh_token"}
-	for _, k := range fieldsInOrder {
-		v, ok := asMap[k]
-		if !ok {
-			continue
-		}
-		switch k {
-		case "refresh_token":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refresh_token"))
-			data, err := ec.unmarshalNString2string(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.RefreshToken = data
-		}
-	}
-	return it, nil
-}
-
-func (ec *executionContext) unmarshalInputRefreshTokenInput(ctx context.Context, obj any) (dto.RefreshTokenRequest, error) {
-	var it dto.RefreshTokenRequest
-	if obj == nil {
-		return it, nil
-	}
-
-	asMap := map[string]any{}
-	for k, v := range obj.(map[string]any) {
-		asMap[k] = v
-	}
-
-	fieldsInOrder := [...]string{"refresh_token"}
-	for _, k := range fieldsInOrder {
-		v, ok := asMap[k]
-		if !ok {
-			continue
-		}
-		switch k {
-		case "refresh_token":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("refresh_token"))
-			data, err := ec.unmarshalNString2string(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.RefreshToken = data
-		}
-	}
-	return it, nil
-}
-
 func (ec *executionContext) unmarshalInputRegisterInput(ctx context.Context, obj any) (dto.RegisterRequest, error) {
 	var it dto.RegisterRequest
 	if obj == nil {
@@ -6387,11 +6222,6 @@ func (ec *executionContext) _AuthPayload(ctx context.Context, sel ast.SelectionS
 			}
 		case "access_token":
 			out.Values[i] = ec._AuthPayload_access_token(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "refresh_token":
-			out.Values[i] = ec._AuthPayload_refresh_token(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -8405,11 +8235,6 @@ func (ec *executionContext) unmarshalNLoginInput2githubᚗcomᚋsalehᚑghazimor
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalNLogoutInput2githubᚗcomᚋsalehᚑghazimoradiᚋGopherMarketᚋinternalᚋdtoᚐLogoutRequest(ctx context.Context, v any) (dto.LogoutRequest, error) {
-	res, err := ec.unmarshalInputLogoutInput(ctx, v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
 func (ec *executionContext) marshalNOrder2githubᚗcomᚋsalehᚑghazimoradiᚋGopherMarketᚋinternalᚋdtoᚐOrderResponse(ctx context.Context, sel ast.SelectionSet, v dto.OrderResponse) graphql.Marshaler {
 	return ec._Order(ctx, sel, &v)
 }
@@ -8576,11 +8401,6 @@ func (ec *executionContext) marshalNProductImage2ᚖgithubᚗcomᚋsalehᚑghazi
 		return graphql.Null
 	}
 	return ec._ProductImage(ctx, sel, v)
-}
-
-func (ec *executionContext) unmarshalNRefreshTokenInput2githubᚗcomᚋsalehᚑghazimoradiᚋGopherMarketᚋinternalᚋdtoᚐRefreshTokenRequest(ctx context.Context, v any) (dto.RefreshTokenRequest, error) {
-	res, err := ec.unmarshalInputRefreshTokenInput(ctx, v)
-	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalNRegisterInput2githubᚗcomᚋsalehᚑghazimoradiᚋGopherMarketᚋinternalᚋdtoᚐRegisterRequest(ctx context.Context, v any) (dto.RegisterRequest, error) {

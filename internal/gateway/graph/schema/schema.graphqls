@@ -18,8 +18,8 @@ type Mutation {
     googleLogin(input: GoogleLoginInput!): AuthPayload!
     forgotPassword(input: ForgotPasswordInput!): Boolean!
     resetPassword(input: ResetPasswordInput!): Boolean!
-    refreshToken(input: RefreshTokenInput!): AuthPayload!
-    logout(input: LogoutInput!): Boolean!
+    refreshToken: AuthPayload!
+    logout: Boolean!
 
     updateProfile(input: UpdateProfileInput!): User!
 

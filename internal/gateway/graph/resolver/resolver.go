@@ -1,6 +1,7 @@
 package resolver
 
 import (
+	"github.com/saleh-ghazimoradi/GopherMarket/config"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/service"
 )
 
@@ -12,6 +13,7 @@ type Resolver struct {
 	productService  service.ProductService
 	userService     service.UserService
 	uploadService   service.UploadService
+	cfg             *config.Config
 }
 
 type Options func(*Resolver)
@@ -55,6 +57,12 @@ func WithUserService(userService service.UserService) Options {
 func WithUploadService(uploadService service.UploadService) Options {
 	return func(r *Resolver) {
 		r.uploadService = uploadService
+	}
+}
+
+func WithConfig(cfg *config.Config) Options {
+	return func(r *Resolver) {
+		r.cfg = cfg
 	}
 }
 

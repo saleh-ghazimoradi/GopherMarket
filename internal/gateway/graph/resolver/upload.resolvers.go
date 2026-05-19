@@ -15,7 +15,7 @@ import (
 )
 
 // UploadProductImage is the resolver for the uploadProductImage field.
-func (r *mutationResolver) UploadProductImage(ctx context.Context, productId uint, image graphql.Upload) (*dto.ProductImageResponse, error) {
+func (r *mutationResolver) UploadProductImage(ctx context.Context, productID uint, image graphql.Upload) (*dto.ProductImageResponse, error) {
 	admin, err := isAdmin(ctx)
 	if err != nil {
 		return nil, err
@@ -24,12 +24,12 @@ func (r *mutationResolver) UploadProductImage(ctx context.Context, productId uin
 		return nil, errors.New("access denied")
 	}
 
-	url, err := r.uploadService.UploadProductImage(ctx, productId, image.File, image.Filename)
+	url, err := r.uploadService.UploadProductImage(ctx, productID, image.File, image.Filename)
 	if err != nil {
 		return nil, fmt.Errorf("upload failed: %w", err)
 	}
 
-	imageResp, err := r.productService.AddProductImage(ctx, productId, url, image.Filename)
+	imageResp, err := r.productService.AddProductImage(ctx, productID, url, image.Filename)
 	if err != nil {
 		return nil, fmt.Errorf("add product image error: %w", err)
 	}

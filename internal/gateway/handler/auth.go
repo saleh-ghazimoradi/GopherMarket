@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"github.com/saleh-ghazimoradi/GopherMarket/config"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/dto"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/helper"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/service"
@@ -9,6 +10,7 @@ import (
 
 type AuthHandler struct {
 	authService service.AuthService
+	cfg         *config.Config
 }
 
 // Register godoc
@@ -27,7 +29,6 @@ func (a *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		helper.BadRequestResponse(w, "Invalid given payload", err)
 		return
 	}
-
 	v := helper.NewValidator()
 	dto.ValidateRegisterRequest(v, &payload)
 	if !v.Valid() {
@@ -35,13 +36,14 @@ func (a *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := a.authService.Register(r.Context(), &payload)
+	authResp, refreshToken, err := a.authService.Register(r.Context(), &payload)
 	if err != nil {
 		helper.InternalServerError(w, "failed to register user", err)
 		return
 	}
 
-	helper.CreatedResponse(w, "user successfully registered", user)
+	a.setRefreshTokenCookie(w, refreshToken)
+	helper.CreatedResponse(w, "user successfully registered", authResp)
 }
 
 // Login godoc
@@ -60,7 +62,6 @@ func (a *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		helper.BadRequestResponse(w, "Invalid given payload", err)
 		return
 	}
-
 	v := helper.NewValidator()
 	dto.ValidateLoginRequest(v, &payload)
 	if !v.Valid() {
@@ -68,13 +69,14 @@ func (a *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := a.authService.Login(r.Context(), &payload)
+	authResp, refreshToken, err := a.authService.Login(r.Context(), &payload)
 	if err != nil {
 		helper.InternalServerError(w, "failed to login", err)
 		return
 	}
 
-	helper.SuccessResponse(w, "user successfully login", user)
+	a.setRefreshTokenCookie(w, refreshToken)
+	helper.SuccessResponse(w, "user successfully login", authResp)
 }
 
 // GoogleLogin godoc
@@ -94,7 +96,6 @@ func (a *AuthHandler) GoogleLogin(w http.ResponseWriter, r *http.Request) {
 		helper.BadRequestResponse(w, "Invalid given payload", err)
 		return
 	}
-
 	v := helper.NewValidator()
 	dto.ValidateGoogleLoginRequest(v, &payload)
 	if !v.Valid() {
@@ -102,12 +103,13 @@ func (a *AuthHandler) GoogleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	authResp, err := a.authService.GoogleLogin(r.Context(), &payload)
+	authResp, refreshToken, err := a.authService.GoogleLogin(r.Context(), &payload)
 	if err != nil {
 		helper.InternalServerError(w, "failed to login", err)
 		return
 	}
 
+	a.setRefreshTokenCookie(w, refreshToken)
 	helper.SuccessResponse(w, "Login successfully", authResp)
 }
 
@@ -187,26 +189,22 @@ func (a *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 // @Failure 401 {object} helper.Response "Invalid refresh token"
 // @Router /auth/refresh [post]
 func (a *AuthHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
-	var payload dto.RefreshTokenRequest
-	if err := helper.ReadJSON(w, r, &payload); err != nil {
-		helper.BadRequestResponse(w, "Invalid given payload", err)
+	cookie, err := r.Cookie("refresh_token")
+	if err != nil {
+		helper.UnauthorizedResponse(w, "refresh token missing")
 		return
 	}
 
-	v := helper.NewValidator()
-	dto.ValidateRefreshTokenRequest(v, &payload)
-	if !v.Valid() {
-		helper.FailedValidationResponse(w, "payload is not valid")
-		return
-	}
+	tokenStr := cookie.Value
 
-	refreshToken, err := a.authService.RefreshToken(r.Context(), &payload)
+	authResp, newRefreshToken, err := a.authService.RefreshToken(r.Context(), tokenStr)
 	if err != nil {
 		helper.InternalServerError(w, "failed to refresh token", err)
 		return
 	}
 
-	helper.SuccessResponse(w, "refresh token successfully", refreshToken)
+	a.setRefreshTokenCookie(w, newRefreshToken)
+	helper.SuccessResponse(w, "refresh token successfully", authResp)
 }
 
 // Logout docs
@@ -220,28 +218,57 @@ func (a *AuthHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 // @Failure 400 {object} helper.Response "Invalid request data"
 // @Router /auth/logout [post]
 func (a *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
-	var payload dto.LogoutRequest
-	if err := helper.ReadJSON(w, r, &payload); err != nil {
-		helper.BadRequestResponse(w, "Invalid given payload", err)
+	cookie, err := r.Cookie("refresh_token")
+	if err != nil {
+		// No cookie to clear, but still send a delete cookie just in case.
+		a.clearRefreshTokenCookie(w)
+		helper.SuccessResponse(w, "user successfully logged out", nil)
 		return
 	}
 
-	v := helper.NewValidator()
-	dto.ValidateLogoutRequest(v, &payload)
-	if !v.Valid() {
-		helper.FailedValidationResponse(w, "payload is not valid")
-		return
-	}
-
-	if err := a.authService.Logout(r.Context(), &payload); err != nil {
+	if err := a.authService.Logout(r.Context(), cookie.Value); err != nil {
+		// Even if DB deletion fails, clear the cookie.
+		a.clearRefreshTokenCookie(w)
 		helper.InternalServerError(w, "failed to logout", err)
+		return
 	}
 
+	a.clearRefreshTokenCookie(w)
 	helper.SuccessResponse(w, "user successfully logged out", nil)
 }
 
-func NewAuthHandler(authService service.AuthService) *AuthHandler {
+func (a *AuthHandler) setRefreshTokenCookie(w http.ResponseWriter, token string) {
+	//TODO: Fix the issue of Secure field. It must be set to true in production. Remove the secure check when in production and switch to HTTPS!!!!
+	secure := a.cfg.Application.Environment != "development"
+	http.SetCookie(w, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    token,
+		Path:     "/v1/auth",
+		Domain:   "",
+		MaxAge:   int(a.cfg.JWT.RefreshTokenExpires.Seconds()),
+		Secure:   secure,
+		HttpOnly: true,
+		SameSite: http.SameSiteStrictMode,
+	})
+}
+
+func (a *AuthHandler) clearRefreshTokenCookie(w http.ResponseWriter) {
+	//TODO: Fix the issue of Secure field. It must be set to true in production. Remove the secure check when in production and switch to HTTPS!!!!
+	secure := a.cfg.Application.Environment != "development"
+	http.SetCookie(w, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    "",
+		Path:     "/v1/auth",
+		MaxAge:   -1,
+		Secure:   secure,
+		HttpOnly: true,
+		SameSite: http.SameSiteStrictMode,
+	})
+}
+
+func NewAuthHandler(authService service.AuthService, cfg *config.Config) *AuthHandler {
 	return &AuthHandler{
 		authService: authService,
+		cfg:         cfg,
 	}
 }

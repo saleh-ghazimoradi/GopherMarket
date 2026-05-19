@@ -190,6 +190,7 @@ var runCmd = &cobra.Command{
 			resolver.WithCartService(cartService),
 			resolver.WithOrderService(orderService),
 			resolver.WithUploadService(uploadService),
+			resolver.WithConfig(cfg),
 		)
 
 		gqlHandler := graphqlHandler.NewGraphQLHandler(graphQLResolver)
@@ -198,7 +199,7 @@ var runCmd = &cobra.Command{
 
 		/*----------Handlers----------*/
 		healthHandler := handler.NewHealthCheckHandler(cfg)
-		authHandler := handler.NewAuthHandler(authService)
+		authHandler := handler.NewAuthHandler(authService, cfg)
 		userHandler := handler.NewUserHandler(userService)
 		categoryHandler := handler.NewCategoryHandler(categoryService)
 		productHandler := handler.NewProductHandler(productService, uploadService)
