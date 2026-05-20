@@ -22,7 +22,7 @@ type ForgotPasswordRequest struct {
 }
 
 type ResetPasswordRequest struct {
-	Token    string `json:"token"`
+	Code     string `json:"code"`
 	Password string `json:"password"`
 }
 

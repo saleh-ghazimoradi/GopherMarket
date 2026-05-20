@@ -124,6 +124,6 @@ func ValidateForgotPasswordRequest(v *helper.Validator, req *ForgotPasswordReque
 }
 
 func ValidateResetPasswordRequest(v *helper.Validator, req *ResetPasswordRequest) {
-	validateToken(v, req.Token)
+	validateToken(v, req.Code)
 	validatePassword(v, req.Password)
 }

@@ -7,6 +7,7 @@ type Email struct {
 }
 
 type PasswordResetEmailEvent struct {
-	Email     string `json:"email"`
-	ResetLink string `json:"reset_link"`
+	Email    string `json:"email"`
+	ResetURL string `json:"reset_url"` // e.g. https://yourfrontend.com/reset-password
+	Code     string `json:"code"`      // 8‑character code
 }

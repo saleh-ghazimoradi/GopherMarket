@@ -20,7 +20,7 @@ input ForgotPasswordInput {
 }
 
 input ResetPasswordInput {
-    token: String!
+    code: String!
     password: String!
 }
 

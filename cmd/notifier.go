@@ -155,7 +155,7 @@ func handlePasswordResetRequested(ctx context.Context, logger *slog.Logger, msg 
 	email := &dto.Email{
 		To:      event.Email,
 		Subject: "Password Reset Request",
-		Body:    fmt.Sprintf("Click the link to reset your password: %s", event.ResetLink),
+		Body:    fmt.Sprintf("Click the link to reset your password: %s", event.ResetURL),
 	}
 
 	logger.InfoContext(ctx, "Sending password reset email")

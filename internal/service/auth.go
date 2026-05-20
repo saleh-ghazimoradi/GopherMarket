@@ -174,24 +174,25 @@ func (a *authService) ForgotPassword(ctx context.Context, req *dto.ForgotPasswor
 	}
 	span.SetAttributes(attribute.Int64("user.id", int64(user.Id)))
 
-	token, err := utils.GenerateHexToken()
+	code, err := utils.GenerateSecureCode(8)
 	if err != nil {
 		span.RecordError(err)
-		span.SetStatus(codes.Error, "failed to generate reset token")
-		return err
+		span.SetStatus(codes.Error, "failed to generate reset code")
+		return fmt.Errorf("failed to generate reset code: %w", err)
 	}
 
-	if err := a.resetTokenRepository.Store(ctx, token, user.Id, time.Hour); err != nil {
+	if err := a.resetTokenRepository.Store(ctx, code, user.Id, 15*time.Minute); err != nil {
 		span.RecordError(err)
-		span.SetStatus(codes.Error, "failed to store reset token")
-		return fmt.Errorf("failed to store reset token: %w", err)
+		span.SetStatus(codes.Error, "failed to store reset code")
+		return fmt.Errorf("failed to store reset code: %w", err)
 	}
 
-	resetLink := fmt.Sprintf("%s/reset-password?token=%s", a.cfg.Application.FrontendURL, token)
+	resetURL := a.cfg.Application.FrontendURL + "/reset-password"
 
 	eventPayload := &dto.PasswordResetEmailEvent{
-		Email:     user.Email,
-		ResetLink: resetLink,
+		Email:    user.Email,
+		ResetURL: resetURL,
+		Code:     code,
 	}
 
 	if err := a.publisher.Publish(ctx, a.cfg.Event.PasswordResetRequested, eventPayload, map[string]string{}); err != nil {
@@ -206,7 +207,7 @@ func (a *authService) ResetPassword(ctx context.Context, req *dto.ResetPasswordR
 	ctx, span := a.tracer.Start(ctx, "AuthService.ResetPassword")
 	defer span.End()
 
-	userId, err := a.resetTokenRepository.VerifyAndDelete(ctx, req.Token)
+	userId, err := a.resetTokenRepository.VerifyAndDelete(ctx, req.Code)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, "invalid reset token")
