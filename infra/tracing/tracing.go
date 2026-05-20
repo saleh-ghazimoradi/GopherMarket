@@ -16,9 +16,9 @@ import (
 	"github.com/saleh-ghazimoradi/GopherMarket/config"
 )
 
-func Setup(ctx context.Context, cfg *config.Config, serviceName string) (func(ctx2 context.Context) error, error) {
+func Setup(ctx context.Context, logger *slog.Logger, cfg *config.Config, serviceName string) (func(ctx2 context.Context) error, error) {
 	if !cfg.Tracing.Enabled {
-		slog.Info("tracing disabled")
+		logger.Info("tracing disabled")
 		otel.SetTracerProvider(noop.NewTracerProvider())
 		return func(context.Context) error { return nil }, nil
 	}
@@ -62,11 +62,11 @@ func Setup(ctx context.Context, cfg *config.Config, serviceName string) (func(ct
 		propagation.Baggage{},
 	))
 
-	slog.Info("tracing initialised", "endpoint", cfg.Tracing.Endpoint, "sampling", cfg.Tracing.Sampling)
+	logger.Info("tracing initiated", "endpoint", cfg.Tracing.Endpoint, "sampling", cfg.Tracing.Sampling)
 
 	return func(ctx context.Context) error {
 		if err := tp.Shutdown(ctx); err != nil {
-			slog.Error("failed to shutdown tracer provider", "error", err)
+			logger.Error("failed to shutdown tracing provider", "error", err)
 		}
 		return nil
 	}, nil

@@ -43,7 +43,7 @@ var notifierCmd = &cobra.Command{
 			return
 		}
 
-		tracerShutdown, err := tracing.Setup(ctx, cfg, "gophermarket-notifier")
+		tracerShutdown, err := tracing.Setup(ctx, sLogger, cfg, "gophermarket-notifier")
 		if err != nil {
 			sLogger.Error("failed to setup tracing", "err", err)
 			return

@@ -19,15 +19,15 @@ import (
 	"github.com/saleh-ghazimoradi/GopherMarket/config"
 )
 
-func Setup(cfg *config.Metrics, serviceName string) (func(context.Context) error, http.Handler, error) {
+func Setup(cfg *config.Metrics, logger *slog.Logger, serviceName string) (func(context.Context) error, http.Handler, error) {
 	if !cfg.Enabled {
-		slog.Info("metrics disabled")
+		logger.Info("metrics disabled")
 		noop := func(context.Context) error { return nil }
 		return noop, nil, nil
 	}
 
 	exporter, err := prometheus.New(
-		prometheus.WithRegisterer(promclient.DefaultRegisterer), // use the original DefaultRegisterer
+		prometheus.WithRegisterer(promclient.DefaultRegisterer),
 	)
 	if err != nil {
 		return nil, nil, fmt.Errorf("prometheus exporter: %w", err)
@@ -48,7 +48,7 @@ func Setup(cfg *config.Metrics, serviceName string) (func(context.Context) error
 	)
 	otel.SetMeterProvider(provider)
 
-	slog.Info("metrics initialised", "port", cfg.Port)
+	logger.Info("metrics initialized", "port", cfg.Port)
 
 	shutdown := func(ctx context.Context) error {
 		return provider.Shutdown(ctx)
@@ -57,7 +57,7 @@ func Setup(cfg *config.Metrics, serviceName string) (func(context.Context) error
 	return shutdown, promhttp.Handler(), nil
 }
 
-func Serve(ctx context.Context, handler http.Handler, port string) error {
+func Serve(ctx context.Context, logger *slog.Logger, handler http.Handler, port string) error {
 	if handler == nil {
 		return nil
 	}
@@ -79,6 +79,6 @@ func Serve(ctx context.Context, handler http.Handler, port string) error {
 		srv.Shutdown(shutdownCtx)
 	}()
 
-	slog.Info("metrics server listening", "port", port)
+	logger.Info("metrics server started", "port", port)
 	return srv.ListenAndServe()
 }

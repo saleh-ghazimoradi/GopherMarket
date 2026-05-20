@@ -50,7 +50,7 @@ var runCmd = &cobra.Command{
 		}
 
 		/*---------- Tracing ----------*/
-		tracerShutdown, err := tracing.Setup(ctx, cfg, "gophermarket-api")
+		tracerShutdown, err := tracing.Setup(ctx, sLogger, cfg, "gophermarket-api")
 		if err != nil {
 			sLogger.Error("failed to setup tracing", "err", err)
 			os.Exit(1)
@@ -70,7 +70,7 @@ var runCmd = &cobra.Command{
 		uploadTracer := otel.Tracer("service.upload")
 
 		/*---------- Metrics ----------*/
-		metricsShutdown, metricsHandler, err := metrics.Setup(&cfg.Metrics, "gophermarket-api")
+		metricsShutdown, metricsHandler, err := metrics.Setup(&cfg.Metrics, sLogger, "gophermarket-api")
 		if err != nil {
 			sLogger.Error("failed to setup metrics", "err", err)
 			os.Exit(1)
@@ -91,7 +91,7 @@ var runCmd = &cobra.Command{
 		// Start metrics HTTP server in background
 		if cfg.Metrics.Enabled && metricsHandler != nil {
 			go func() {
-				if err := metrics.Serve(ctx, metricsHandler, cfg.Metrics.Port); err != nil {
+				if err := metrics.Serve(ctx, sLogger, metricsHandler, cfg.Metrics.Port); err != nil {
 					sLogger.Error("metrics server error", "err", err)
 				}
 			}()
