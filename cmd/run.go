@@ -229,7 +229,7 @@ var runCmd = &cobra.Command{
 		)
 
 		/*----------HTTP Server----------*/
-		httpServer := server.NewServer(
+		serverOpts := []server.Option{
 			server.WithHost(cfg.Server.Host),
 			server.WithPort(cfg.Server.Port),
 			server.WithHandler(routes.RegisterRoutes()),
@@ -238,9 +238,19 @@ var runCmd = &cobra.Command{
 			server.WithIdleTimeout(cfg.Server.IdleTimeout),
 			server.WithErrorLog(slog.NewLogLogger(sLogger.Handler(), slog.LevelError)),
 			server.WithLogger(sLogger),
+		}
+		if cfg.Server.CertFile != "" && cfg.Server.KeyFile != "" {
+			serverOpts = append(serverOpts, server.WithCert(cfg.Server.CertFile), server.WithKey(cfg.Server.KeyFile))
+		}
+
+		httpServer := server.NewServer(serverOpts...)
+
+		sLogger.Info("starting server",
+			"addr", cfg.Server.Host+":"+cfg.Server.Port,
+			"env", cfg.Application.Environment,
+			"tls", cfg.Server.CertFile != "",
 		)
 
-		sLogger.Info("starting server", "addr", cfg.Server.Host+":"+cfg.Server.Port, "env", cfg.Application.Environment)
 		if err := httpServer.Connect(); err != nil {
 			sLogger.Error("failed to connect to http server", "err", err)
 			os.Exit(1)
