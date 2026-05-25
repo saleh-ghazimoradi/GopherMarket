@@ -57,6 +57,7 @@ func (m *Middleware) Logging(next http.Handler) http.Handler {
 			"method", r.Method,
 			"path", r.URL.Path,
 			"protocol", r.Proto,
+			"tls", r.TLS.Version,
 			"remote_addr", r.RemoteAddr,
 			"trace_id", traceID,
 			"span_id", spanID,
