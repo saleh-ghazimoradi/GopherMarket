@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"log"
@@ -22,6 +23,8 @@ type Server struct {
 	idleTimeout  time.Duration
 	errLog       *log.Logger
 	logger       *slog.Logger
+	certFile     string
+	keyFile      string
 }
 
 type Option func(*Server)
@@ -74,6 +77,18 @@ func WithLogger(slogLogger *slog.Logger) Option {
 	}
 }
 
+func WithCert(certFile string) Option {
+	return func(s *Server) {
+		s.certFile = certFile
+	}
+}
+
+func WithKey(keyFile string) Option {
+	return func(s *Server) {
+		s.keyFile = keyFile
+	}
+}
+
 func (s *Server) addr() string {
 	return fmt.Sprintf("%s:%s", s.host, s.port)
 }
@@ -86,6 +101,14 @@ func (s *Server) Connect() error {
 		ReadTimeout:  s.readTimeout,
 		WriteTimeout: s.writeTimeout,
 		ErrorLog:     s.errLog,
+	}
+
+	if s.certFile != "" && s.keyFile != "" {
+		server.TLSConfig = &tls.Config{
+			MinVersion: tls.VersionTLS12,
+			//ClientAuth: tls.RequireAndVerifyClientCert, // enforce mTLS. These two, clientAuth, ClientCAs are used when you are working with desktop or mobile. Not the browser. Mostly used in microservices. mTLs: mutual TLS.
+			//ClientCAs:  loadClientCAs(),
+		}
 	}
 
 	shutdownError := make(chan error)
@@ -109,15 +132,23 @@ func (s *Server) Connect() error {
 		shutdownError <- nil
 	}()
 
-	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		return err
+	s.logger.Info("starting server", "addr", server.Addr, "tls", s.certFile != "")
+
+	if s.certFile != "" && s.keyFile != "" {
+		if err := server.ListenAndServeTLS(s.certFile, s.keyFile); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			return err
+		}
+	} else {
+		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			return err
+		}
 	}
 
 	if err := <-shutdownError; err != nil {
 		return err
 	}
 
-	s.logger.Info("Stopped server", "addr", server.Addr)
+	s.logger.Info("stopped server", "addr", server.Addr)
 	return nil
 }
 
@@ -128,3 +159,15 @@ func NewServer(opts ...Option) *Server {
 	}
 	return s
 }
+
+//func loadClientCAs() *x509.CertPool {
+//	clientCAs := x509.NewCertPool()
+//	caCert, err := os.ReadFile("cert.pem")
+//	if err != nil {
+//		log.Fatalln("Could not read client certificate:", err)
+//	}
+//	if ok := clientCAs.AppendCertsFromPEM(caCert); !ok {
+//		log.Fatalln("Could not append client certificate")
+//	}
+//	return clientCAs
+//}
