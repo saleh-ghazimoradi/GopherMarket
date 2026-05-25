@@ -21,6 +21,10 @@
 
 *.env
 
+*.pem
+
+*.cnf
+
 *.envrc
 
 bin
