@@ -88,6 +88,8 @@ type Server struct {
 	IdleTimeout  time.Duration `env:"SERVER_IDLE_TIMEOUT"`
 	ReadTimeout  time.Duration `env:"SERVER_READ_TIMEOUT"`
 	WriteTimeout time.Duration `env:"SERVER_WRITE_TIMEOUT"`
+	CertFile     string        `env:"SERVER_CERT_FILE"`
+	KeyFile      string        `env:"SERVER_KEY_FILE"`
 }
 
 type JWT struct {
