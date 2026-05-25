@@ -144,8 +144,12 @@ var runCmd = &cobra.Command{
 			return
 		}
 
+		allowedOrigins := []string{
+			"https://localhost:4000",
+		}
+
 		/*----------Dependencies----------*/
-		middlewares := middleware.NewMiddleware(sLogger, cfg)
+		middlewares := middleware.NewMiddleware(cfg, sLogger, allowedOrigins)
 		watermillPublisher, err := publisher.NewWatermillPublisher(ctx, cfg)
 		if err != nil {
 			sLogger.Error("failed to create publisher", "err", err)

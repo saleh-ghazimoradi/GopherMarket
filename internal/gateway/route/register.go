@@ -91,7 +91,25 @@ func (r *RegisterRoute) RegisterRoutes() http.Handler {
 	r.cartRoute.CartRoutes(mux)
 	r.orderRoute.OrderRoute(mux)
 	r.GraphQLRoute.GraphQLRoutes(mux)
-	return r.middleware.Recover(r.middleware.Tracing(r.middleware.Metrics(r.middleware.Logging(r.middleware.CORS(r.middleware.RateLimit(mux))))))
+
+	hppOpts := middleware.HPPOptions{
+		CheckBody:                   true,
+		CheckBodyOnlyForContentType: "application/json",
+		Whitelist:                   []string{"email", "password", "name"},
+	}
+
+	return middleware.Chain(mux,
+		r.middleware.Recover,
+		r.middleware.Tracing,
+		r.middleware.Metrics,
+		r.middleware.Logging,
+		r.middleware.SecurityHeaders,
+		r.middleware.CORS,
+		r.middleware.Compression,
+		r.middleware.Limiter,
+		r.middleware.HPP(hppOpts),
+	)
+
 }
 
 func NewRegisterRoute(opts ...Options) *RegisterRoute {
