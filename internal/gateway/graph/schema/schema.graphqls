@@ -16,6 +16,7 @@ type Mutation {
     register(input: RegisterInput!): AuthPayload!
     login(input: LoginInput!): AuthPayload!
     googleLogin(input: GoogleLoginInput!): AuthPayload!
+    changePassword(input: ChangePasswordInput!): Boolean!
     forgotPassword(input: ForgotPasswordInput!): Boolean!
     resetPassword(input: ResetPasswordInput!): Boolean!
     refreshToken: AuthPayload!

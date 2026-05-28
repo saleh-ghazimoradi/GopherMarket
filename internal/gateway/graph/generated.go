@@ -81,6 +81,7 @@ type ComplexityRoot struct {
 
 	Mutation struct {
 		AddToCart          func(childComplexity int, input dto.AddToCartRequest) int
+		ChangePassword     func(childComplexity int, input dto.ChangePasswordRequest) int
 		CreateCategory     func(childComplexity int, input dto.CreateCategoryRequest) int
 		CreateOrder        func(childComplexity int) int
 		CreateProduct      func(childComplexity int, input dto.CreateProductRequest) int
@@ -204,6 +205,7 @@ type MutationResolver interface {
 	Register(ctx context.Context, input dto.RegisterRequest) (*dto.AuthResponse, error)
 	Login(ctx context.Context, input dto.LoginRequest) (*dto.AuthResponse, error)
 	GoogleLogin(ctx context.Context, input dto.GoogleLoginRequest) (*dto.AuthResponse, error)
+	ChangePassword(ctx context.Context, input dto.ChangePasswordRequest) (bool, error)
 	ForgotPassword(ctx context.Context, input dto.ForgotPasswordRequest) (bool, error)
 	ResetPassword(ctx context.Context, input dto.ResetPasswordRequest) (bool, error)
 	RefreshToken(ctx context.Context) (*dto.AuthResponse, error)
@@ -397,6 +399,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.AddToCart(childComplexity, args["input"].(dto.AddToCartRequest)), true
+	case "Mutation.changePassword":
+		if e.ComplexityRoot.Mutation.ChangePassword == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_changePassword_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.ChangePassword(childComplexity, args["input"].(dto.ChangePasswordRequest)), true
 	case "Mutation.createCategory":
 		if e.ComplexityRoot.Mutation.CreateCategory == nil {
 			break
@@ -952,6 +965,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	ec := newExecutionContext(opCtx, e, make(chan graphql.DeferredResult))
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
 		ec.unmarshalInputAddToCartInput,
+		ec.unmarshalInputChangePasswordInput,
 		ec.unmarshalInputCreateCategoryInput,
 		ec.unmarshalInputCreateProductInput,
 		ec.unmarshalInputForgotPasswordInput,
@@ -1403,6 +1417,20 @@ func (ec *executionContext) field_Mutation_addToCart_args(ctx context.Context, r
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input",
 		func(ctx context.Context, v any) (dto.AddToCartRequest, error) {
 			return ec.unmarshalNAddToCartInput2githubᚗcomᚋsalehᚑghazimoradiᚋGopherMarketᚋinternalᚋdtoᚐAddToCartRequest(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_changePassword_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input",
+		func(ctx context.Context, v any) (dto.ChangePasswordRequest, error) {
+			return ec.unmarshalNChangePasswordInput2githubᚗcomᚋsalehᚑghazimoradiᚋGopherMarketᚋinternalᚋdtoᚐChangePasswordRequest(ctx, v)
 		})
 	if err != nil {
 		return nil, err
@@ -2416,6 +2444,50 @@ func (ec *executionContext) fieldContext_Mutation_googleLogin(ctx context.Contex
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_googleLogin_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_changePassword(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_changePassword(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().ChangePassword(ctx, fc.Args["input"].(dto.ChangePasswordRequest))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_changePassword(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_changePassword_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -5719,6 +5791,43 @@ func (ec *executionContext) unmarshalInputAddToCartInput(ctx context.Context, ob
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputChangePasswordInput(ctx context.Context, obj any) (dto.ChangePasswordRequest, error) {
+	var it dto.ChangePasswordRequest
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"old_password", "new_password"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "old_password":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("old_password"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.OldPassword = data
+		case "new_password":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("new_password"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.NewPassword = data
+		}
+	}
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputCreateCategoryInput(ctx context.Context, obj any) (dto.CreateCategoryRequest, error) {
 	var it dto.CreateCategoryRequest
 	if obj == nil {
@@ -6600,6 +6709,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "googleLogin":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_googleLogin(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "changePassword":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_changePassword(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -8160,6 +8276,11 @@ func (ec *executionContext) marshalNCategory2ᚖgithubᚗcomᚋsalehᚑghazimora
 		return graphql.Null
 	}
 	return ec._Category(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNChangePasswordInput2githubᚗcomᚋsalehᚑghazimoradiᚋGopherMarketᚋinternalᚋdtoᚐChangePasswordRequest(ctx context.Context, v any) (dto.ChangePasswordRequest, error) {
+	res, err := ec.unmarshalInputChangePasswordInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalNCreateCategoryInput2githubᚗcomᚋsalehᚑghazimoradiᚋGopherMarketᚋinternalᚋdtoᚐCreateCategoryRequest(ctx context.Context, v any) (dto.CreateCategoryRequest, error) {

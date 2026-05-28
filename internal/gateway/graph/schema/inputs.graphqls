@@ -15,6 +15,11 @@ input GoogleLoginInput {
     credential: String!
 }
 
+input ChangePasswordInput {
+    old_password: String!
+    new_password: String!
+}
+
 input ForgotPasswordInput {
     email: String!
 }

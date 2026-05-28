@@ -77,6 +77,25 @@ func (r *mutationResolver) GoogleLogin(ctx context.Context, input dto.GoogleLogi
 	return authResp, nil
 }
 
+// ChangePassword is the resolver for the changePassword field.
+func (r *mutationResolver) ChangePassword(ctx context.Context, input dto.ChangePasswordRequest) (bool, error) {
+	userId, exists := utils.UserIdFromContext(ctx)
+	if !exists {
+		return false, errors.New("unauthorized")
+	}
+	v := helper.NewValidator()
+	dto.ValidateChangePasswordRequest(v, &input)
+	if !v.Valid() {
+		return false, helper.NewValidateError(v)
+	}
+
+	if err := r.authService.ChangePassword(ctx, userId, &input); err != nil {
+		return false, fmt.Errorf("change password error: %w", err)
+	}
+
+	return true, nil
+}
+
 // ForgotPassword is the resolver for the forgotPassword field.
 func (r *mutationResolver) ForgotPassword(ctx context.Context, input dto.ForgotPasswordRequest) (bool, error) {
 	v := helper.NewValidator()
