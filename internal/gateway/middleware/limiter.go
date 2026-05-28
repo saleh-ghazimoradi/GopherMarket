@@ -9,53 +9,67 @@ import (
 	"time"
 )
 
+type clientItem struct {
+	limiter  *rate.Limiter
+	lastSeen time.Time
+}
+
+type ConcurrentLimiter struct {
+	mu      sync.RWMutex
+	clients map[string]*clientItem
+}
+
 func (m *Middleware) Limiter(next http.Handler) http.Handler {
 	if !m.cfg.RateLimiter.Enabled {
 		return next
 	}
 
-	type client struct {
-		limiter  *rate.Limiter
-		lastSeen time.Time
+	state := &ConcurrentLimiter{
+		clients: make(map[string]*clientItem),
 	}
-
-	var (
-		mu      sync.Mutex
-		clients = make(map[string]*client)
-	)
 
 	go func() {
 		for {
-			time.Sleep(time.Minute)
-
-			mu.Lock()
-
-			for ip, client := range clients {
-				if time.Since(client.lastSeen) > 3*time.Minute {
-					delete(clients, ip)
+			time.Sleep(1 * time.Minute)
+			state.mu.Lock()
+			for ip, item := range state.clients {
+				if time.Since(item.lastSeen) > 3*time.Minute {
+					delete(state.clients, ip)
 				}
 			}
-			mu.Unlock()
+			state.mu.Unlock()
 		}
 	}()
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ip := realip.FromRequest(r)
-		mu.Lock()
-		if _, found := clients[ip]; !found {
-			clients[ip] = &client{
-				limiter: rate.NewLimiter(rate.Limit(m.cfg.RateLimiter.RPS), m.cfg.RateLimiter.Burst),
-			}
-		}
-		clients[ip].lastSeen = time.Now()
+		now := time.Now()
 
-		if !clients[ip].limiter.Allow() {
-			mu.Unlock()
-			helper.RateLimitExceededResponse(w, "Too many requests")
+		state.mu.RLock()
+		cl, exists := state.clients[ip]
+		state.mu.RUnlock()
+
+		if !exists {
+			state.mu.Lock()
+			cl, exists = state.clients[ip]
+			if !exists {
+				cl = &clientItem{
+					limiter: rate.NewLimiter(rate.Limit(m.cfg.RateLimiter.RPS), m.cfg.RateLimiter.Burst),
+				}
+				state.clients[ip] = cl
+			}
+			state.mu.Unlock()
+		}
+
+		state.mu.Lock()
+		cl.lastSeen = now
+		allowed := cl.limiter.Allow()
+		state.mu.Unlock()
+
+		if !allowed {
+			helper.RateLimitExceededResponse(w, "Too Many Requests")
 			return
 		}
-
-		mu.Unlock()
 
 		next.ServeHTTP(w, r)
 	})

@@ -2,17 +2,27 @@ package middleware
 
 import (
 	"compress/gzip"
+	"io"
 	"net/http"
 	"strings"
 )
 
 type gzipResponseWriter struct {
 	http.ResponseWriter
-	Writer *gzip.Writer
+	w io.Writer
 }
 
-func (g *gzipResponseWriter) Write(data []byte) (int, error) {
-	return g.Writer.Write(data)
+func (grw gzipResponseWriter) Write(b []byte) (int, error) {
+	return grw.w.Write(b)
+}
+
+func (grw gzipResponseWriter) Flush() {
+	if f, ok := grw.ResponseWriter.(http.Flusher); ok {
+		if gzw, ok := grw.w.(*gzip.Writer); ok {
+			gzw.Flush()
+		}
+		f.Flush()
+	}
 }
 
 func (m *Middleware) Compression(next http.Handler) http.Handler {
@@ -26,10 +36,8 @@ func (m *Middleware) Compression(next http.Handler) http.Handler {
 		gz := gzip.NewWriter(w)
 		defer gz.Close()
 
-		gw := &gzipResponseWriter{
-			ResponseWriter: w,
-			Writer:         gz,
-		}
-		next.ServeHTTP(gw, r)
+		var rw http.ResponseWriter = gzipResponseWriter{ResponseWriter: w, w: gz}
+
+		next.ServeHTTP(rw, r)
 	})
 }

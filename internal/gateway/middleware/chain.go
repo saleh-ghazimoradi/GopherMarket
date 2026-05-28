@@ -2,9 +2,11 @@ package middleware
 
 import "net/http"
 
-func Chain(h http.Handler, middlewares ...func(http.Handler) http.Handler) http.Handler {
+type MiddlewareFunc func(http.Handler) http.Handler
+
+func Chain(handler http.Handler, middlewares ...MiddlewareFunc) http.Handler {
 	for i := len(middlewares) - 1; i >= 0; i-- {
-		h = middlewares[i](h)
+		handler = middlewares[i](handler)
 	}
-	return h
+	return handler
 }
