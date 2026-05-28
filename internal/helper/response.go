@@ -82,6 +82,10 @@ func RateLimitExceededResponse(w http.ResponseWriter, message string) {
 	ErrorResponse(w, http.StatusTooManyRequests, message, nil)
 }
 
+func UnsupportedMediaTypeResponse(w http.ResponseWriter, message string) {
+	ErrorResponse(w, http.StatusUnsupportedMediaType, message, nil)
+}
+
 func PaginatedSuccessResponse(w http.ResponseWriter, message string, data any, meta PaginatedMeta) {
 	paginatedResponse := PaginatedResponse{
 		Response: Response{

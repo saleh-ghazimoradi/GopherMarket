@@ -92,24 +92,23 @@ func (r *RegisterRoute) RegisterRoutes() http.Handler {
 	r.orderRoute.OrderRoute(mux)
 	r.GraphQLRoute.GraphQLRoutes(mux)
 
-	hppOpts := middleware.HPPOptions{
-		CheckBody:                   true,
-		CheckBodyOnlyForContentType: "application/json",
-		Whitelist:                   []string{"email", "password", "name"},
-	}
+	//hppOpts := middleware.HPPOptions{
+	//	CheckQuery:                  true,
+	//	CheckBody:                   false,
+	//	CheckBodyOnlyForContentType: "",
+	//	Whitelist:                   []string{"email", "password", "name"},
+	//}
 
 	return middleware.Chain(mux,
-		r.middleware.Recover,
-		r.middleware.Tracing,
-		r.middleware.Metrics,
-		r.middleware.Logging,
-		r.middleware.SecurityHeaders,
-		r.middleware.CORS,
-		r.middleware.Compression,
-		r.middleware.Limiter,
-		r.middleware.HPP(hppOpts),
+		r.middleware.Recover,         // 1st Layer: Catches panics at the absolute boundary
+		r.middleware.Compression,     // 2nd Layer: Compresses outbound stream right before the wire
+		r.middleware.Tracing,         // 3rd Layer: Captures panics *inside* the trace span to log errors
+		r.middleware.Metrics,         // 4th Layer: Accurately counts uncompressed metrics & statuses
+		r.middleware.Logging,         // 5th Layer: Logs clean, uncompressed request/response data
+		r.middleware.SecurityHeaders, // 6th Layer: Evaluates secure browser headers cleanly
+		r.middleware.CORS,            // 7th Layer: Validates origins early
+		r.middleware.Limiter,         // 8th Layer: Drops bad/flood traffic before hitting the app engine
 	)
-
 }
 
 func NewRegisterRoute(opts ...Options) *RegisterRoute {

@@ -17,6 +17,11 @@ type GoogleLoginRequest struct {
 	Credential string `json:"credential"`
 }
 
+type ChangePasswordRequest struct {
+	OldPassword string `json:"old_password"`
+	NewPassword string `json:"new_password"`
+}
+
 type ForgotPasswordRequest struct {
 	Email string `json:"email"`
 }

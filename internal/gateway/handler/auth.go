@@ -5,6 +5,7 @@ import (
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/dto"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/helper"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/service"
+	"github.com/saleh-ghazimoradi/GopherMarket/utils"
 	"net/http"
 )
 
@@ -111,6 +112,34 @@ func (a *AuthHandler) GoogleLogin(w http.ResponseWriter, r *http.Request) {
 
 	a.setRefreshTokenCookie(w, refreshToken)
 	helper.SuccessResponse(w, "Login successfully", authResp)
+}
+
+func (a *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
+	userId, exist := utils.UserIdFromContext(r.Context())
+	if !exist {
+		helper.UnauthorizedResponse(w, "Unauthorized")
+		return
+	}
+
+	var payload dto.ChangePasswordRequest
+	if err := helper.ReadJSON(w, r, &payload); err != nil {
+		helper.BadRequestResponse(w, "Invalid given payload", err)
+		return
+	}
+
+	v := helper.NewValidator()
+	dto.ValidateChangePasswordRequest(v, &payload)
+	if !v.Valid() {
+		helper.FailedValidationResponse(w, "payload is not valid")
+		return
+	}
+
+	if err := a.authService.ChangePassword(r.Context(), userId, &payload); err != nil {
+		helper.InternalServerError(w, "failed to change password", err)
+		return
+	}
+
+	helper.SuccessResponse(w, "Password successfully changed", nil)
 }
 
 // ForgotPassword godoc

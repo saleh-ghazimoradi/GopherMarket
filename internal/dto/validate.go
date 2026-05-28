@@ -127,3 +127,7 @@ func ValidateResetPasswordRequest(v *helper.Validator, req *ResetPasswordRequest
 	validateToken(v, req.Code)
 	validatePassword(v, req.Password)
 }
+
+func ValidateChangePasswordRequest(v *helper.Validator, req *ChangePasswordRequest) {
+	validatePassword(v, req.NewPassword)
+}

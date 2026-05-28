@@ -23,6 +23,7 @@ type AuthService interface {
 	Register(ctx context.Context, req *dto.RegisterRequest) (*dto.AuthResponse, string, error)
 	Login(ctx context.Context, req *dto.LoginRequest) (*dto.AuthResponse, string, error)
 	GoogleLogin(ctx context.Context, req *dto.GoogleLoginRequest) (*dto.AuthResponse, string, error)
+	ChangePassword(ctx context.Context, userId uint, req *dto.ChangePasswordRequest) error
 	ForgotPassword(ctx context.Context, req *dto.ForgotPasswordRequest) error
 	ResetPassword(ctx context.Context, req *dto.ResetPasswordRequest) error
 	RefreshToken(ctx context.Context, refreshTokenString string) (*dto.AuthResponse, string, error)
@@ -161,6 +162,39 @@ func (a *authService) GoogleLogin(ctx context.Context, req *dto.GoogleLoginReque
 	}
 
 	return a.generateAuthResponse(ctx, user)
+}
+
+func (a *authService) ChangePassword(ctx context.Context, userId uint, req *dto.ChangePasswordRequest) error {
+	ctx, span := a.tracer.Start(ctx, "AuthService.ChangePassword",
+		trace.WithAttributes(attribute.Int64("user.id", int64(userId))))
+	defer span.End()
+
+	user, err := a.userRepository.GetUserById(ctx, userId)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to get user")
+		return fmt.Errorf("faield to get user: %w", err)
+	}
+
+	if !utils.CheckPasswordHash(*user.Password, req.OldPassword) {
+		span.SetStatus(codes.Error, "invalid credentials")
+		return fmt.Errorf("invalid credentials")
+	}
+
+	newPassword, err := utils.HashPassword(req.NewPassword)
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to hash password")
+		return fmt.Errorf("faield to hash new password: %w", err)
+	}
+
+	user.Password = &newPassword
+	if err := a.userRepository.UpdateUser(ctx, user); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to update user")
+		return fmt.Errorf("failed to update user password: %w", err)
+	}
+	return nil
 }
 
 func (a *authService) ForgotPassword(ctx context.Context, req *dto.ForgotPasswordRequest) error {

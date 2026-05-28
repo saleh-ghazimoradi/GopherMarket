@@ -212,7 +212,7 @@ var runCmd = &cobra.Command{
 
 		/*----------Routes----------*/
 		healthRoute := route.NewHealthCheckRoute(healthHandler)
-		authRoute := route.NewAuthRoute(authHandler)
+		authRoute := route.NewAuthRoute(authHandler, middlewares)
 		userRoute := route.NewUserRoute(middlewares, userHandler)
 		categoryRoute := route.NewCategoryRoute(middlewares, categoryHandler)
 		productRoute := route.NewProductRoute(middlewares, productHandler)
