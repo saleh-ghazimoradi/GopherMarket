@@ -206,23 +206,20 @@ func (a *authService) ForgotPassword(ctx context.Context, req *dto.ForgotPasswor
 	if err != nil || user == nil || user.Password == nil {
 		return nil
 	}
+
 	span.SetAttributes(attribute.Int64("user.id", int64(user.Id)))
 
 	code, err := utils.GenerateSecureCode(8)
 	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "failed to generate reset code")
 		return fmt.Errorf("failed to generate reset code: %w", err)
 	}
 
 	if err := a.resetTokenRepository.Store(ctx, code, user.Id, 15*time.Minute); err != nil {
 		span.RecordError(err)
-		span.SetStatus(codes.Error, "failed to store reset code")
-		return fmt.Errorf("failed to store reset code: %w", err)
+		return fmt.Errorf("failed to store reset token in cache: %w", err)
 	}
 
 	resetURL := a.cfg.Application.FrontendURL + "/reset-password"
-
 	eventPayload := &dto.PasswordResetEmailEvent{
 		Email:    user.Email,
 		ResetURL: resetURL,
@@ -232,7 +229,10 @@ func (a *authService) ForgotPassword(ctx context.Context, req *dto.ForgotPasswor
 	if err := a.publisher.Publish(ctx, a.cfg.Event.PasswordResetRequested, eventPayload, map[string]string{}); err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, "failed to publish password reset event")
-		return fmt.Errorf("failed to publish password reset event: %w", err)
+		if cleanErr := a.resetTokenRepository.Delete(ctx, code); cleanErr != nil {
+			a.logger.WarnContext(ctx, "failed to clean up orphaned redis token after publisher failure", "error", cleanErr)
+		}
+		return fmt.Errorf("failed to send reset email event: %w", err)
 	}
 	return nil
 }

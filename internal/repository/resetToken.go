@@ -10,6 +10,7 @@ import (
 type ResetTokenRepository interface {
 	Store(ctx context.Context, token string, userId uint, ttl time.Duration) error
 	VerifyAndDelete(ctx context.Context, token string) (uint, error)
+	Delete(ctx context.Context, token string) error
 }
 
 type resetTokenRepository struct {
@@ -31,6 +32,11 @@ func (r *resetTokenRepository) VerifyAndDelete(ctx context.Context, token string
 
 	r.client.Del(ctx, key)
 	return uint(userId), nil
+}
+
+func (r *resetTokenRepository) Delete(ctx context.Context, token string) error {
+	key := "password_reset:" + token
+	return r.client.Del(ctx, key).Err()
 }
 
 func NewResetTokenRepository(client *redis.Client) ResetTokenRepository {
