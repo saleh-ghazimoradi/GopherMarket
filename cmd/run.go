@@ -155,7 +155,7 @@ var runCmd = &cobra.Command{
 			sLogger.Error("failed to create publisher", "err", err)
 			return
 		}
-		googleOAuth := oauth.NewGoogleOAuth(cfg.GoogleOAuth.ClientId)
+		googleOAuth := oauth.NewGoogleOAuth(cfg.GoogleOAuth.ClientID)
 
 		/*----------Upload Strategy----------*/
 		var uploadStrategies uploadStrategy.UploadStrategy
