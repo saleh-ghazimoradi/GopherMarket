@@ -147,6 +147,7 @@ func (a *authService) GoogleLogin(ctx context.Context, req *dto.GoogleLoginReque
 			return nil, "", fmt.Errorf("google login: create user: %w", err)
 		}
 		span.SetAttributes(attribute.Int64("user.id", int64(user.Id)))
+
 		cart := &domain.Cart{UserId: user.Id}
 		if err := a.cartRepository.CreateCart(ctx, cart); err != nil {
 			span.RecordError(err)
@@ -157,8 +158,18 @@ func (a *authService) GoogleLogin(ctx context.Context, req *dto.GoogleLoginReque
 		span.SetAttributes(attribute.Int64("user.id", int64(user.Id)))
 		if user.AuthProvider == nil {
 			user.AuthProvider = &provider
-			_ = a.userRepository.UpdateUser(ctx, user)
+			if err := a.userRepository.UpdateUser(ctx, user); err != nil {
+				span.RecordError(err)
+				span.SetStatus(codes.Error, "failed to update user auth provider")
+				return nil, "", fmt.Errorf("google login: linking provider failed: %w", err)
+			}
 		}
+	}
+
+	if err := a.toPublish(ctx, user); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "failed to publish user login event")
+		return nil, "", fmt.Errorf("google login: %w", err)
 	}
 
 	return a.generateAuthResponse(ctx, user)
