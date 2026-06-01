@@ -46,7 +46,7 @@ func (g *GoogleOAuth) Verify(ctx context.Context, credential string) (*OAuthInfo
 }
 
 func decodeClaims(payload *idtoken.Payload, target any) error {
-	b, err := json.Marshal(payload)
+	b, err := json.Marshal(payload.Claims)
 	if err != nil {
 		return err
 	}
