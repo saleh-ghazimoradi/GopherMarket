@@ -122,7 +122,7 @@ type AWS struct {
 }
 
 type GoogleOAuth struct {
-	ClientId string `env:"GOOGLE_CLIENT_Id"`
+	ClientID string `env:"GOOGLE_CLIENT_ID"`
 }
 
 func GetConfigInstance() (*Config, error) {
