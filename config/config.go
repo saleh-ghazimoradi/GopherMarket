@@ -16,7 +16,8 @@ type Config struct {
 	Application Application
 	Redis       Redis
 	Postgresql  Postgresql
-	Server      Server
+	HTTPServer  HTTPServer
+	GrpcServer  GrpcServer
 	JWT         JWT
 	AWS         AWS
 	Upload      Upload
@@ -123,6 +124,21 @@ type AWS struct {
 
 type GoogleOAuth struct {
 	ClientID string `env:"GOOGLE_CLIENT_ID"`
+}
+
+type HTTPServer struct {
+	Host         string        `env:"HTTPSERVER_HOST"`
+	Port         string        `env:"HTTPSERVER_PORT"`
+	IdleTimeout  time.Duration `env:"HTTPSERVER_IDLE_TIMEOUT"`
+	ReadTimeout  time.Duration `env:"HTTPSERVER_READ_TIMEOUT"`
+	WriteTimeout time.Duration `env:"HTTPSERVER_WRITE_TIMEOUT"`
+	CertFile     string        `env:"HTTPSERVER_CERT_FILE"`
+	KeyFile      string        `env:"HTTPSERVER_KEY_FILE"`
+}
+
+type GrpcServer struct {
+	Host string `env:"GRPC_SERVER_HOST"`
+	Port string `env:"GRPC_SERVER_PORT"`
 }
 
 func GetConfigInstance() (*Config, error) {

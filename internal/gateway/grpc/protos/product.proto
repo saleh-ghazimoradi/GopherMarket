@@ -1,0 +1,111 @@
+syntax = "proto3";
+
+package protos;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+import "internal/gateway/grpc/protos/category.proto";
+
+option go_package = "github.com/saleh-ghazimoradi/GopherMarket/internal/gateway/grpc/protos";
+
+service ProductService {
+  rpc CreateProduct(CreateProductRequest) returns (ProductResponse);
+  rpc ListProducts(ListProductsRequest) returns (ListProductsResponse);
+  rpc GetProduct(GetProductRequest) returns (ProductResponse);
+  rpc UpdateProduct(UpdateProductRequest) returns (ProductResponse);
+  rpc DeleteProduct(DeleteProductRequest) returns (google.protobuf.Empty);
+  rpc AddProductImage(AddProductImageRequest) returns (ProductImageResponse);
+  rpc SearchProducts(SearchProductsRequest) returns (SearchProductsResponse);
+}
+
+message PaginatedMeta {
+  int32 page = 1;
+  int32 limit = 2;
+  int64 total = 3;
+  int32 total_pages = 4;
+}
+
+message ProductImageResponse {
+  uint64 id = 1;
+  string url = 2;
+  string alt_text = 3;
+  bool is_primary = 4;
+  google.protobuf.Timestamp created_at = 5;
+}
+
+message ProductResponse {
+  uint64 id = 1;
+  uint64 category_id = 2;
+  string name = 3;
+  string description = 4;
+  double price = 5;
+  int32 stock = 6;
+  string sku = 7;
+  bool is_active = 8;
+  CategoryResponse category = 9; 
+  repeated ProductImageResponse images = 10;
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp updated_at = 12;
+}
+
+message ProductSearchResult {
+  ProductResponse product = 1;
+  float rank = 2;
+}
+
+message CreateProductRequest {
+  uint64 category_id = 1;
+  string name = 2;
+  string description = 3;
+  double price = 4;
+  int32 stock = 5;
+  string sku = 6;
+}
+
+message ListProductsRequest {
+  int32 page = 1;
+  int32 limit = 2;
+}
+
+message ListProductsResponse {
+  repeated ProductResponse products = 1;
+  PaginatedMeta meta = 2;
+}
+
+message GetProductRequest {
+  uint64 id = 1;
+}
+
+message UpdateProductRequest {
+  uint64 id = 1;
+  optional uint64 category_id = 2;
+  optional string name = 3;
+  optional string description = 4;
+  optional double price = 5;
+  optional int32 stock = 6;
+  optional bool is_active = 7;
+}
+
+message DeleteProductRequest {
+  uint64 id = 1;
+}
+
+message AddProductImageRequest {
+  uint64 product_id = 1;
+  string url = 2;
+  string alt_text = 3;
+}
+
+message SearchProductsRequest {
+  string query = 1;
+  int32 page = 2;
+  int32 limit = 3;
+  optional uint64 category_id = 4;
+  optional double min_price = 5;
+  optional double max_price = 6;
+}
+
+message SearchProductsResponse {
+  repeated ProductSearchResult results = 1;
+  PaginatedMeta meta = 2;
+}

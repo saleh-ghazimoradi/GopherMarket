@@ -11,28 +11,34 @@ import (
 	"github.com/saleh-ghazimoradi/GopherMarket/infra/tracing"
 	graphqlHandler "github.com/saleh-ghazimoradi/GopherMarket/internal/gateway/graph/handler"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/gateway/graph/resolver"
+	grpcHandler "github.com/saleh-ghazimoradi/GopherMarket/internal/gateway/grpc/handler"
+	"github.com/saleh-ghazimoradi/GopherMarket/internal/gateway/grpc/protos"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/gateway/handler"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/gateway/middleware"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/gateway/route"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/logger"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/repository"
-	"github.com/saleh-ghazimoradi/GopherMarket/internal/server"
+	"github.com/saleh-ghazimoradi/GopherMarket/internal/server/grpcserver"
+	"github.com/saleh-ghazimoradi/GopherMarket/internal/server/httpserver"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/service"
 	"github.com/saleh-ghazimoradi/GopherMarket/pkg/oauth"
 	"github.com/saleh-ghazimoradi/GopherMarket/pkg/uploadStrategy"
 	"github.com/spf13/cobra"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/contrib/instrumentation/runtime"
 	"go.opentelemetry.io/otel"
+	"google.golang.org/grpc"
 	"log/slog"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 )
 
-// runCmd represents the run command
 var runCmd = &cobra.Command{
 	Use:   "run",
-	Short: "A brief description of your command",
+	Short: "Start the GopherMarket API application servers",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("run called")
 
@@ -81,14 +87,12 @@ var runCmd = &cobra.Command{
 			}
 		}()
 
-		// Start runtime metrics (goroutines, memory, etc.)
 		if cfg.Metrics.Enabled {
 			if err := runtime.Start(runtime.WithMinimumReadMemStatsInterval(5 * time.Second)); err != nil {
 				sLogger.Error("failed to start runtime metrics", "err", err)
 			}
 		}
 
-		// Start metrics HTTP server in background
 		if cfg.Metrics.Enabled && metricsHandler != nil {
 			go func() {
 				if err := metrics.Serve(ctx, sLogger, metricsHandler, cfg.Metrics.Port); err != nil {
@@ -110,16 +114,14 @@ var runCmd = &cobra.Command{
 			redis.WithPoolTimeout(cfg.Redis.PoolTimeout),
 		)
 
-		redis, err := redisCfg.Connect(ctx)
+		redisClient, err := redisCfg.Connect(ctx)
 		if err != nil {
 			sLogger.Error("failed to connect to redis", "err", err)
 			return
 		}
-
 		defer func() {
-			if err := redis.Close(); err != nil {
+			if err := redisClient.Close(); err != nil {
 				sLogger.Error("failed to close redis", "err", err)
-				return
 			}
 		}()
 
@@ -166,7 +168,7 @@ var runCmd = &cobra.Command{
 		}
 
 		/*----------Repositories----------*/
-		cacheRepository := repository.NewRedisCache(redis)
+		cacheRepository := repository.NewRedisCache(redisClient)
 		userRepository := repository.NewUserRepository(db, db)
 		tokenRepository := repository.NewTokenRepository(db, db)
 		cartRepository := repository.NewCartRepository(db, db)
@@ -174,7 +176,7 @@ var runCmd = &cobra.Command{
 		categoryRepository := repository.NewCategoryRepository(db, db)
 		productRepository := repository.NewProductRepository(db, db)
 		orderRepository := repository.NewOrderRepository(db, db)
-		resetTokenRepository := repository.NewResetTokenRepository(redis)
+		resetTokenRepository := repository.NewResetTokenRepository(redisClient)
 
 		/*----------Services----------*/
 		authService := service.NewAuthService(userRepository, cartRepository, tokenRepository, resetTokenRepository, googleOAuth, watermillPublisher, cfg, sLogger, authTracer)
@@ -210,6 +212,13 @@ var runCmd = &cobra.Command{
 		cartHandler := handler.NewCartHandler(cartService)
 		orderHandler := handler.NewOrderHandler(orderService)
 
+		authGrpcHandler := grpcHandler.NewAuthGrpcHandler(authService)
+		cartGrpcHandler := grpcHandler.NewCartGrpcHandler(cartService)
+		categoryGrpcHandler := grpcHandler.NewCategoryGrpcHandler(categoryService)
+		orderGrpcHandler := grpcHandler.NewOrderGrpcHandler(orderService)
+		productGrpcHandler := grpcHandler.NewProductGrpcHandler(productService)
+		userGrpcHandler := grpcHandler.NewUserGrpcHandler(userService)
+
 		/*----------Routes----------*/
 		healthRoute := route.NewHealthCheckRoute(healthHandler)
 		authRoute := route.NewAuthRoute(authHandler, middlewares)
@@ -232,32 +241,70 @@ var runCmd = &cobra.Command{
 			route.WithGraphQLRoute(graphqlRoute),
 		)
 
-		/*----------HTTP Server----------*/
-		serverOpts := []server.Option{
-			server.WithHost(cfg.Server.Host),
-			server.WithPort(cfg.Server.Port),
-			server.WithHandler(routes.RegisterRoutes()),
-			server.WithReadTimeout(cfg.Server.ReadTimeout),
-			server.WithWriteTimeout(cfg.Server.WriteTimeout),
-			server.WithIdleTimeout(cfg.Server.IdleTimeout),
-			server.WithErrorLog(slog.NewLogLogger(sLogger.Handler(), slog.LevelError)),
-			server.WithLogger(sLogger),
-		}
-		if cfg.Server.CertFile != "" && cfg.Server.KeyFile != "" {
-			serverOpts = append(serverOpts, server.WithCert(cfg.Server.CertFile), server.WithKey(cfg.Server.KeyFile))
-		}
-
-		httpServer := server.NewServer(serverOpts...)
-
-		sLogger.Info("starting server",
-			"addr", cfg.Server.Host+":"+cfg.Server.Port,
-			"env", cfg.Application.Environment,
-			"tls", cfg.Server.CertFile != "",
+		/*---------- gRPC Server Initialization ----------*/
+		grpcServer := grpcserver.NewGrpcServer(
+			grpcserver.WithHost(cfg.GrpcServer.Host),
+			grpcserver.WithPort(cfg.GrpcServer.Port),
+			grpcserver.WithLogger(sLogger),
+			grpcserver.WithGrpcOptions(grpc.StatsHandler(otelgrpc.NewServerHandler())),
 		)
 
-		if err := httpServer.Connect(); err != nil {
-			sLogger.Error("failed to connect to http server", "err", err)
-			os.Exit(1)
+		protos.RegisterAuthServiceServer(grpcServer.GetServer(), authGrpcHandler)
+		protos.RegisterCartServiceServer(grpcServer.GetServer(), cartGrpcHandler)
+		protos.RegisterCategoryServiceServer(grpcServer.GetServer(), categoryGrpcHandler)
+		protos.RegisterOrderServiceServer(grpcServer.GetServer(), orderGrpcHandler)
+		protos.RegisterProductServiceServer(grpcServer.GetServer(), productGrpcHandler)
+		protos.RegisterUserServiceServer(grpcServer.GetServer(), userGrpcHandler)
+
+		/*---------- HTTP Server Initialization ----------*/
+		httpServerOpts := []httpserver.Option{
+			httpserver.WithHost(cfg.HTTPServer.Host),
+			httpserver.WithPort(cfg.HTTPServer.Port),
+			httpserver.WithHandler(routes.RegisterRoutes()),
+			httpserver.WithReadTimeout(cfg.HTTPServer.ReadTimeout),
+			httpserver.WithWriteTimeout(cfg.HTTPServer.WriteTimeout),
+			httpserver.WithIdleTimeout(cfg.HTTPServer.IdleTimeout),
+			httpserver.WithErrorLog(slog.NewLogLogger(sLogger.Handler(), slog.LevelError)),
+			httpserver.WithLogger(sLogger),
+		}
+
+		if cfg.HTTPServer.CertFile != "" && cfg.HTTPServer.KeyFile != "" {
+			httpServerOpts = append(httpServerOpts, httpserver.WithCert(cfg.HTTPServer.CertFile), httpserver.WithKey(cfg.HTTPServer.KeyFile))
+		}
+		httpServer := httpserver.NewHTTPServer(httpServerOpts...)
+
+		/*---------- Execution and Lifecycles ----------*/
+		serverErrors := make(chan error, 2)
+
+		// Launch gRPC Engine
+		go func() {
+			sLogger.Info("starting gRPC server", "addr", cfg.GrpcServer.Host+":"+cfg.GrpcServer.Port)
+			if err := grpcServer.Connect(); err != nil {
+				serverErrors <- fmt.Errorf("gRPC server run error: %w", err)
+			}
+		}()
+
+		// Launch HTTP Engine
+		go func() {
+			if err := httpServer.Connect(); err != nil {
+				serverErrors <- fmt.Errorf("HTTP server run error: %w", err)
+			}
+		}()
+
+		shutdownChan := make(chan os.Signal, 1)
+		signal.Notify(shutdownChan, syscall.SIGINT, syscall.SIGTERM)
+
+		select {
+		case err := <-serverErrors:
+			sLogger.Error("critical runtime server error", "err", err)
+		case sig := <-shutdownChan:
+			sLogger.Info("system signal intercepted, initializing termination layout", "signal", sig.String())
+
+			cancel()
+
+			sLogger.Info("halting gRPC listeners gracefully...")
+			grpcServer.GracefulStop()
+			sLogger.Info("gRPC server context dropped cleanly")
 		}
 	},
 }

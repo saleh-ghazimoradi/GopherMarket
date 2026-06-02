@@ -1,4 +1,9 @@
-.PHONY: help docker-up docker-down fmt vet run build lint migrate-up migrate-down
+.PHONY: help docker-up docker-down fmt vet run build lint migrate-up migrate-down grpc clean-grpc
+
+# Variables for gRPC generation
+PROTO_DIR := internal/gateway/grpc/protos
+MODULE_NAME := github.com/saleh-ghazimoradi/GopherMarket
+PROTO_FILES := $(shell find $(PROTO_DIR) -name "*.proto")
 
 help:
 	@echo "Available commands:"
@@ -11,6 +16,8 @@ help:
 	@echo "  make vet      	 - Run vet on all the codebase"
 	@echo "  make swagger    - Generate Swagger Docs"
 	@echo "  make graphql    	 - Generate graphql schema"
+	@echo "  make grpc       - Generate all gRPC code from proto files"
+	@echo "  make clean-grpc - Remove generated gRPC files"
 
 docker-up:
 	docker compose up -d
@@ -57,4 +64,11 @@ graphql:
 	go get github.com/99designs/gqlgen@latest
 	go run github.com/99designs/gqlgen generate
 
+grpc:
+	protoc --proto_path=. \
+		--go_out=. --go_opt=module=$(MODULE_NAME) \
+		--go-grpc_out=. --go-grpc_opt=module=$(MODULE_NAME) \
+		$(PROTO_FILES)
 
+clean-grpc:
+	find $(PROTO_DIR) -name "*.pb.go" -delete

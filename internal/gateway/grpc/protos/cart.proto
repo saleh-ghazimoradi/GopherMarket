@@ -1,0 +1,63 @@
+syntax = "proto3";
+
+package protos;
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+import "internal/gateway/grpc/protos/product.proto";
+
+option go_package = "github.com/saleh-ghazimoradi/GopherMarket/internal/gateway/grpc/protos";
+
+
+message GetCartRequest {
+  uint64 user_id = 1;
+}
+
+message AddToCartRequest {
+  uint64 product_id = 1;
+  int32 quantity = 2;
+}
+
+message AddToCartGrpcRequest {
+  uint64 user_id = 1;
+  AddToCartRequest request = 2;
+}
+
+message UpdateCartItemRequest {
+  int32 quantity = 1;
+}
+
+message UpdateCartItemGrpcRequest {
+  uint64 user_id = 1;
+  uint64 item_id = 2;
+  UpdateCartItemRequest request = 3;
+}
+
+message RemoveFromCartRequest {
+  uint64 user_id = 1;
+  uint64 item_id = 2;
+}
+
+message CartResponse {
+  uint64 id = 1;
+  uint64 user_id = 2;
+  repeated CartItemResponse cart_items = 3;
+  double total = 4;
+  google.protobuf.Timestamp created_at = 5;
+  google.protobuf.Timestamp updated_at = 6;
+}
+
+message CartItemResponse {
+  uint64 id = 1;
+  ProductResponse product = 2;
+  int32 quantity = 3;
+  double subtotal = 4;
+  google.protobuf.Timestamp created_at = 5;
+  google.protobuf.Timestamp updated_at = 6;
+}
+
+service CartService {
+  rpc GetCart(GetCartRequest) returns (CartResponse);
+  rpc AddToCart(AddToCartGrpcRequest) returns (CartResponse);
+  rpc UpdateCartItem(UpdateCartItemGrpcRequest) returns (CartResponse);
+  rpc RemoveFromCart(RemoveFromCartRequest) returns (google.protobuf.Empty);
+}

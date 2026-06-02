@@ -1,4 +1,4 @@
-package server
+package httpserver
 
 import (
 	"context"
@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-type Server struct {
+type HTTPServer struct {
 	host         string
 	port         string
 	handler      http.Handler
@@ -27,73 +27,73 @@ type Server struct {
 	keyFile      string
 }
 
-type Option func(*Server)
+type Option func(*HTTPServer)
 
 func WithHost(host string) Option {
-	return func(s *Server) {
+	return func(s *HTTPServer) {
 		s.host = host
 	}
 }
 
 func WithPort(port string) Option {
-	return func(s *Server) {
+	return func(s *HTTPServer) {
 		s.port = port
 	}
 }
 
 func WithHandler(handler http.Handler) Option {
-	return func(s *Server) {
+	return func(s *HTTPServer) {
 		s.handler = handler
 	}
 }
 
 func WithReadTimeout(readTimeout time.Duration) Option {
-	return func(s *Server) {
+	return func(s *HTTPServer) {
 		s.readTimeout = readTimeout
 	}
 }
 
 func WithWriteTimeout(writeTimeout time.Duration) Option {
-	return func(s *Server) {
+	return func(s *HTTPServer) {
 		s.writeTimeout = writeTimeout
 	}
 }
 
 func WithIdleTimeout(idleTimeout time.Duration) Option {
-	return func(s *Server) {
+	return func(s *HTTPServer) {
 		s.idleTimeout = idleTimeout
 	}
 }
 
 func WithErrorLog(errLogger *log.Logger) Option {
-	return func(s *Server) {
+	return func(s *HTTPServer) {
 		s.errLog = errLogger
 	}
 }
 
 func WithLogger(slogLogger *slog.Logger) Option {
-	return func(s *Server) {
+	return func(s *HTTPServer) {
 		s.logger = slogLogger
 	}
 }
 
 func WithCert(certFile string) Option {
-	return func(s *Server) {
+	return func(s *HTTPServer) {
 		s.certFile = certFile
 	}
 }
 
 func WithKey(keyFile string) Option {
-	return func(s *Server) {
+	return func(s *HTTPServer) {
 		s.keyFile = keyFile
 	}
 }
 
-func (s *Server) addr() string {
+func (s *HTTPServer) addr() string {
 	return fmt.Sprintf("%s:%s", s.host, s.port)
 }
 
-func (s *Server) Connect() error {
+func (s *HTTPServer) Connect() error {
 	server := &http.Server{
 		Addr:         s.addr(),
 		Handler:      s.handler,
@@ -152,8 +152,8 @@ func (s *Server) Connect() error {
 	return nil
 }
 
-func NewServer(opts ...Option) *Server {
-	s := &Server{}
+func NewHTTPServer(opts ...Option) *HTTPServer {
+	s := &HTTPServer{}
 	for _, opt := range opts {
 		opt(s)
 	}
