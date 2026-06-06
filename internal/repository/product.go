@@ -7,6 +7,7 @@ import (
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/dto"
 	"gorm.io/gorm"
 	"strings"
+	"time"
 )
 
 type ProductRepository interface {
@@ -37,7 +38,7 @@ func (p *productRepository) CreateProductImage(ctx context.Context, image *domai
 
 func (p *productRepository) GetProductById(ctx context.Context, id uint) (*domain.Product, error) {
 	var product domain.Product
-	if err := p.dbRead.WithContext(ctx).Preload("Category").Preload("Images").First(&product, id).Error; err != nil {
+	if err := p.dbRead.WithContext(ctx).Preload("Category").Preload("Images").Preload("Discounts", "start_time <= ? AND end_time >= ?", time.Now().UTC(), time.Now().UTC()).First(&product, id).Error; err != nil {
 		switch {
 		case errors.Is(err, gorm.ErrRecordNotFound):
 			return nil, ErrsNotFound
@@ -50,7 +51,7 @@ func (p *productRepository) GetProductById(ctx context.Context, id uint) (*domai
 
 func (p *productRepository) GetProducts(ctx context.Context, offset, limit int) ([]*domain.Product, error) {
 	var products []*domain.Product
-	if err := p.dbRead.WithContext(ctx).Preload("Category").Preload("Images").Where("is_active = ?", true).Offset(offset).Limit(limit).Find(&products).Error; err != nil {
+	if err := p.dbRead.WithContext(ctx).Preload("Category").Preload("Images").Preload("Discounts", "start_time <= ? AND end_time >= ?", time.Now().UTC(), time.Now().UTC()).Where("is_active = ?", true).Offset(offset).Limit(limit).Find(&products).Error; err != nil {
 		return nil, err
 	}
 	return products, nil
@@ -123,6 +124,7 @@ func (p *productRepository) SearchProducts(ctx context.Context, req *dto.SearchP
 	if err := db.
 		Preload("Category").
 		Preload("Images").
+		Preload("Discounts", "start_time <= ? AND end_time >= ?", time.Now().UTC(), time.Now().UTC()).
 		Order("rank DESC, created_at DESC").
 		Offset(offset).
 		Limit(limit).

@@ -21,18 +21,20 @@ type UpdateProductRequest struct {
 }
 
 type ProductResponse struct {
-	Id          uint                   `json:"id"`
-	CategoryId  uint                   `json:"category_id"`
-	Name        string                 `json:"name"`
-	Description string                 `json:"description"`
-	Price       float64                `json:"price"`
-	Stock       int                    `json:"stock"`
-	SKU         string                 `json:"sku"`
-	IsActive    bool                   `json:"is_active"`
-	Category    CategoryResponse       `json:"category"`
-	Images      []ProductImageResponse `json:"images"`
-	CreatedAt   time.Time              `json:"created_at"`
-	UpdatedAt   time.Time              `json:"updated_at"`
+	Id              uint                   `json:"id"`
+	CategoryId      uint                   `json:"category_id"`
+	Name            string                 `json:"name"`
+	Description     string                 `json:"description"`
+	Price           float64                `json:"price"` // Base price
+	IsOnSale        bool                   `json:"is_on_sale"`
+	DiscountedPrice float64                `json:"discounted_price"`
+	Stock           int                    `json:"stock"`
+	SKU             string                 `json:"sku"`
+	IsActive        bool                   `json:"is_active"`
+	Category        CategoryResponse       `json:"category"`
+	Images          []ProductImageResponse `json:"images"`
+	CreatedAt       time.Time              `json:"created_at"`
+	UpdatedAt       time.Time              `json:"updated_at"`
 }
 
 type ProductImageResponse struct {

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/domain"
 	"gorm.io/gorm"
+	"time"
 )
 
 type OrderRepository interface {
@@ -22,7 +23,14 @@ func (o *orderRepository) CreateOrder(ctx context.Context, order *domain.Order) 
 
 func (o *orderRepository) GetOrderByUserId(ctx context.Context, userId, orderId uint) (*domain.Order, error) {
 	var order domain.Order
-	if err := o.dbRead.WithContext(ctx).Preload("OrderItems.Product.Category").Where("id = ? AND user_id = ?", orderId, userId).First(&order).Error; err != nil {
+	if err := o.dbRead.WithContext(ctx).
+		Preload("OrderItems").
+		Preload("OrderItems.Product").
+		Preload("OrderItems.Product.Category").
+		Preload("OrderItems.Product.Images").
+		Preload("OrderItems.Product.Discounts", "start_time <= ? AND end_time >= ?", time.Now().UTC(), time.Now().UTC()).
+		Where("id = ? AND user_id = ?", orderId, userId).
+		First(&order).Error; err != nil {
 		switch {
 		case errors.Is(err, gorm.ErrRecordNotFound):
 			return nil, ErrsNotFound
@@ -35,7 +43,14 @@ func (o *orderRepository) GetOrderByUserId(ctx context.Context, userId, orderId 
 
 func (o *orderRepository) GetOrderById(ctx context.Context, id uint) (*domain.Order, error) {
 	var order domain.Order
-	if err := o.dbRead.WithContext(ctx).Preload("OrderItems.Product.Category").First(&order, id).Error; err != nil {
+
+	if err := o.dbRead.WithContext(ctx).
+		Preload("OrderItems").
+		Preload("OrderItems.Product").
+		Preload("OrderItems.Product.Category").
+		Preload("OrderItems.Product.Images").
+		Preload("OrderItems.Product.Discounts", "start_time <= ? AND end_time >= ?", time.Now().UTC(), time.Now().UTC()).
+		First(&order, id).Error; err != nil {
 		switch {
 		case errors.Is(err, gorm.ErrRecordNotFound):
 			return nil, ErrsNotFound
@@ -48,7 +63,19 @@ func (o *orderRepository) GetOrderById(ctx context.Context, id uint) (*domain.Or
 
 func (o *orderRepository) GetUserOrders(ctx context.Context, userId uint, offset, limit int) ([]*domain.Order, error) {
 	var orders []*domain.Order
-	if err := o.dbRead.WithContext(ctx).Preload("OrderItems.Product.Category").Where("user_id = ?", userId).Order("created_at desc").Offset(offset).Limit(limit).Find(&orders).Error; err != nil {
+	err := o.dbRead.WithContext(ctx).
+		Preload("OrderItems").
+		Preload("OrderItems.Product").
+		Preload("OrderItems.Product.Category").
+		Preload("OrderItems.Product.Images").
+		Preload("OrderItems.Product.Discounts", "start_time <= ? AND end_time >= ?", time.Now().UTC(), time.Now().UTC()).
+		Where("user_id = ?", userId).
+		Order("created_at desc").
+		Offset(offset).
+		Limit(limit).
+		Find(&orders).Error
+
+	if err != nil {
 		switch {
 		case errors.Is(err, gorm.ErrRecordNotFound):
 			return nil, ErrsNotFound

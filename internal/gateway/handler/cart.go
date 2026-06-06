@@ -92,7 +92,7 @@ func (c *CartHandler) UpdateCart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id, err := helper.ReadParams(r)
+	id, err := helper.ReadParams(r, "id")
 	if err != nil {
 		helper.BadRequestResponse(w, "invalid cart id", err)
 		return
@@ -130,7 +130,7 @@ func (c *CartHandler) RemoveCart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id, err := helper.ReadParams(r)
+	id, err := helper.ReadParams(r, "id")
 	if err != nil {
 		helper.BadRequestResponse(w, "invalid cart item id", err)
 		return

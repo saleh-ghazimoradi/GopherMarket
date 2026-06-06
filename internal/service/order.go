@@ -37,11 +37,13 @@ func (o *orderService) CreateOrder(ctx context.Context, userId uint) (*dto.Order
 	var orderResponse dto.OrderResponse
 
 	err := o.db.Transaction(func(tx *gorm.DB) error {
+		// Bind transactional scope repositories safely
 		cartRepository := o.cartRepository.WithTx(tx)
 		cartItemRepository := o.cartItemRepository.WithTx(tx)
 		productRepository := o.productRepository.WithTx(tx)
 		orderRepository := o.orderRepository.WithTx(tx)
 
+		// Fetches cart while preloading active product discounts matching the UTC timeline
 		cart, err := cartRepository.GetCartWithItemsAndProducts(ctx, userId)
 		if err != nil {
 			return fmt.Errorf("cartRepository.GetCartWithItemsAndProducts: %w", err)
@@ -56,24 +58,36 @@ func (o *orderService) CreateOrder(ctx context.Context, userId uint) (*dto.Order
 
 		for i := range cart.CartItems {
 			item := &cart.CartItems[i]
+			product := &item.Product
 
-			if item.Product.Stock < item.Quantity {
-				return fmt.Errorf("not enough stock for product: %s", item.Product.Name)
+			// Verify inventory availability
+			if product.Stock < item.Quantity {
+				return fmt.Errorf("not enough stock for product: %s", product.Name)
 			}
 
-			item.Product.Stock -= item.Quantity
-			if err := productRepository.UpdateProduct(ctx, &item.Product); err != nil {
+			// Decrement stock allocation and save changes inside transaction block
+			product.Stock -= item.Quantity
+			if err := productRepository.UpdateProduct(ctx, product); err != nil {
 				return err
 			}
 
-			totalAmount += float64(item.Quantity) * item.Product.Price
+			// Determine the actual sale unit price for this product
+			actualUnitPrice := product.Price
+			if len(product.Discounts) > 0 {
+				actualUnitPrice = CalculateDiscountPrice(&product.Discounts[0], product.Price)
+			}
+
+			// Compute total amount using the accurate price
+			totalAmount += float64(item.Quantity) * actualUnitPrice
+
 			orderItems = append(orderItems, domain.OrderItem{
-				ProductId: item.Product.Id,
+				ProductId: product.Id,
 				Quantity:  item.Quantity,
-				Price:     item.Product.Price,
+				Price:     actualUnitPrice, // Persist the actual price paid into the history ledger
 			})
 		}
 
+		// Construct the pure Order model without tracking coupon strings
 		order := &domain.Order{
 			UserId:      userId,
 			Status:      domain.OrderStatusPending,
@@ -90,10 +104,12 @@ func (o *orderService) CreateOrder(ctx context.Context, userId uint) (*dto.Order
 			attribute.Float64("order.total", totalAmount),
 		)
 
+		// Clear items out of user's basket
 		if err := cartItemRepository.ClearCartItems(ctx, cart.Id); err != nil {
 			return fmt.Errorf("cartItemRepository.ClearCartItems: %w", err)
 		}
 
+		// Reload order graph completely (pulling database relationships) to map DTO fields safely
 		createdOrder, err := orderRepository.GetOrderById(ctx, order.Id)
 		if err != nil {
 			return fmt.Errorf("orderRepository.GetOrderById: %w", err)
@@ -107,7 +123,7 @@ func (o *orderService) CreateOrder(ctx context.Context, userId uint) (*dto.Order
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, "failed to create order")
-		return nil, fmt.Errorf("o.toOrderResp: %w", err)
+		return nil, err
 	}
 
 	return &orderResponse, nil
@@ -187,29 +203,50 @@ func (o *orderService) toOrderResp(order *domain.Order) *dto.OrderResponse {
 
 	for i := range order.OrderItems {
 		item := &order.OrderItems[i]
+		product := &item.Product
+
+		isOnSale := false
+		discountedPrice := product.Price
+
+		if len(product.Discounts) > 0 {
+			calculatedPrice := CalculateDiscountPrice(&product.Discounts[0], product.Price)
+			if calculatedPrice < product.Price {
+				discountedPrice = calculatedPrice
+				isOnSale = true
+			}
+		}
+
 		orderItems[i] = dto.OrderItemResponse{
 			Id: item.Id,
 			Product: dto.ProductResponse{
-				Id:          item.Product.Id,
-				CategoryId:  item.Product.CategoryId,
-				Name:        item.Product.Name,
-				Description: item.Product.Description,
-				Price:       item.Product.Price,
-				Stock:       item.Product.Stock,
-				SKU:         item.Product.SKU,
-				IsActive:    item.Product.IsActive,
+				Id:              product.Id,
+				CategoryId:      product.CategoryId,
+				Name:            product.Name,
+				Description:     product.Description,
+				Price:           product.Price,
+				IsOnSale:        isOnSale,
+				DiscountedPrice: discountedPrice,
+				Stock:           product.Stock,
+				SKU:             product.SKU,
+				IsActive:        product.IsActive,
 				Category: dto.CategoryResponse{
-					Id:          item.Product.Category.Id,
-					Name:        item.Product.Category.Name,
-					Description: item.Product.Category.Description,
-					IsActive:    item.Product.IsActive,
+					Id:          product.Category.Id,
+					Name:        product.Category.Name,
+					Description: product.Category.Description,
+					IsActive:    product.Category.IsActive,
+					CreatedAt:   product.Category.CreatedAt, // FIX: Map category created_at timestamp
+					UpdatedAt:   product.Category.UpdatedAt, // FIX: Map category updated_at timestamp
 				},
+				Images:    make([]dto.ProductImageResponse, 0),
+				CreatedAt: product.CreatedAt, // FIX: Map product created_at timestamp
+				UpdatedAt: product.UpdatedAt, // FIX: Map product updated_at timestamp
 			},
 			Quantity:  item.Quantity,
 			Price:     item.Price,
 			CreatedAt: item.CreatedAt,
 		}
 	}
+
 	return &dto.OrderResponse{
 		Id:          order.Id,
 		UserId:      order.UserId,

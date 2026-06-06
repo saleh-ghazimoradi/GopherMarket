@@ -67,6 +67,7 @@ var runCmd = &cobra.Command{
 		productTracer := otel.Tracer("service.product")
 		cartTracer := otel.Tracer("service.cart")
 		orderTracer := otel.Tracer("service.order")
+		discountTracer := otel.Tracer("service.discount")
 		uploadTracer := otel.Tracer("service.upload")
 
 		/*---------- Metrics ----------*/
@@ -175,6 +176,7 @@ var runCmd = &cobra.Command{
 		productRepository := repository.NewProductRepository(db, db)
 		orderRepository := repository.NewOrderRepository(db, db)
 		resetTokenRepository := repository.NewResetTokenRepository(redis)
+		discountRepository := repository.NewDiscountRepository(db, db)
 
 		/*----------Services----------*/
 		authService := service.NewAuthService(userRepository, cartRepository, tokenRepository, resetTokenRepository, googleOAuth, watermillPublisher, cfg, sLogger, authTracer)
@@ -184,6 +186,7 @@ var runCmd = &cobra.Command{
 		uploadService := service.NewUploadService(uploadStrategies, uploadTracer)
 		cartService := service.NewCartService(cartRepository, cartItemRepository, productRepository, cartTracer)
 		orderService := service.NewOrderService(orderRepository, cartRepository, cartItemRepository, productRepository, db, orderTracer)
+		discountService := service.NewDiscountService(discountRepository, cacheRepository, discountTracer)
 
 		/*----------GraphQL----------*/
 		graphQLResolver := resolver.NewResolver(
@@ -209,6 +212,7 @@ var runCmd = &cobra.Command{
 		productHandler := handler.NewProductHandler(productService, uploadService)
 		cartHandler := handler.NewCartHandler(cartService)
 		orderHandler := handler.NewOrderHandler(orderService)
+		discountHandler := handler.NewDiscountHandler(discountService)
 
 		/*----------Routes----------*/
 		healthRoute := route.NewHealthCheckRoute(healthHandler)
@@ -218,6 +222,7 @@ var runCmd = &cobra.Command{
 		productRoute := route.NewProductRoute(middlewares, productHandler)
 		cartRoute := route.NewCartRoute(middlewares, cartHandler)
 		orderRoute := route.NewOrderRoute(middlewares, orderHandler)
+		discountRoute := route.NewDiscountRoute(middlewares, discountHandler)
 
 		/*----------Route Registry----------*/
 		routes := route.NewRegisterRoute(
@@ -229,6 +234,7 @@ var runCmd = &cobra.Command{
 			route.WithProductRoute(productRoute),
 			route.WithCartRoute(cartRoute),
 			route.WithOrderRoute(orderRoute),
+			route.WithDiscountRoute(discountRoute),
 			route.WithGraphQLRoute(graphqlRoute),
 		)
 

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/domain"
 	"gorm.io/gorm"
+	"time"
 )
 
 type CartRepository interface {
@@ -26,7 +27,7 @@ func (c *cartRepository) CreateCart(ctx context.Context, cart *domain.Cart) erro
 
 func (c *cartRepository) GetCartByUserId(ctx context.Context, userId uint) (*domain.Cart, error) {
 	var cart domain.Cart
-	if err := c.dbRead.WithContext(ctx).Preload("CartItems.Product.Category").Where("user_id = ?", userId).First(&cart).Error; err != nil {
+	if err := c.dbRead.WithContext(ctx).Preload("CartItems.Product.Category").Preload("CartItems.Product.Images").Preload("CartItems.Product.Discounts", "start_time <= ? AND end_time >= ?", time.Now().UTC(), time.Now().UTC()).Where("user_id = ?", userId).First(&cart).Error; err != nil {
 		switch {
 		case errors.Is(err, gorm.ErrRecordNotFound):
 			return nil, ErrsNotFound
@@ -39,7 +40,7 @@ func (c *cartRepository) GetCartByUserId(ctx context.Context, userId uint) (*dom
 
 func (c *cartRepository) GetCartWithItemsAndProducts(ctx context.Context, userId uint) (*domain.Cart, error) {
 	var cart domain.Cart
-	if err := c.dbRead.WithContext(ctx).Preload("CartItems.Product").Where("user_id = ?", userId).First(&cart).Error; err != nil {
+	if err := c.dbRead.WithContext(ctx).Preload("CartItems.Product").Preload("CartItems.Product.Discounts", "start_time <= ? AND end_time >= ?", time.Now().UTC(), time.Now().UTC()).Where("user_id = ?", userId).First(&cart).Error; err != nil {
 		switch {
 		case errors.Is(err, gorm.ErrRecordNotFound):
 			return nil, ErrsNotFound

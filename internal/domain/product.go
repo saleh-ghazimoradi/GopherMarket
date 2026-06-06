@@ -23,4 +23,5 @@ type Product struct {
 	Images     []ProductImage
 	OrderItems []OrderItem
 	CartItems  []CartItem
+	Discounts  []Discount
 }

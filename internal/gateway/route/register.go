@@ -15,6 +15,7 @@ type RegisterRoute struct {
 	productRoute     *ProductRoute
 	cartRoute        *CartRoute
 	orderRoute       *OrderRoute
+	discountRoute    *DiscountRoute
 	GraphQLRoute     *GraphQLRoute
 }
 
@@ -68,6 +69,12 @@ func WithOrderRoute(orderRoute *OrderRoute) Options {
 	}
 }
 
+func WithDiscountRoute(discountRoute *DiscountRoute) Options {
+	return func(r *RegisterRoute) {
+		r.discountRoute = discountRoute
+	}
+}
+
 func WithGraphQLRoute(graphQLRoute *GraphQLRoute) Options {
 	return func(r *RegisterRoute) {
 		r.GraphQLRoute = graphQLRoute
@@ -90,6 +97,7 @@ func (r *RegisterRoute) RegisterRoutes() http.Handler {
 	r.productRoute.ProductRoutes(mux)
 	r.cartRoute.CartRoutes(mux)
 	r.orderRoute.OrderRoute(mux)
+	r.discountRoute.DiscountRoutes(mux)
 	r.GraphQLRoute.GraphQLRoutes(mux)
 
 	//hppOpts := middleware.HPPOptions{

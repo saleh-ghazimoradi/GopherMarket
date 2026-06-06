@@ -276,15 +276,29 @@ func (p *productService) toProductResp(product *domain.Product) *dto.ProductResp
 		}
 	}
 
+	discountedPrice := product.Price
+	isOnSale := false
+
+	if len(product.Discounts) > 0 {
+		activeDiscount := &product.Discounts[0]
+		calculatedPrice := CalculateDiscountPrice(activeDiscount, product.Price)
+		if calculatedPrice < product.Price {
+			discountedPrice = calculatedPrice
+			isOnSale = true
+		}
+	}
+
 	return &dto.ProductResponse{
-		Id:          product.Id,
-		CategoryId:  product.CategoryId,
-		Name:        product.Name,
-		Description: product.Description,
-		Price:       product.Price,
-		Stock:       product.Stock,
-		SKU:         product.SKU,
-		IsActive:    product.IsActive,
+		Id:              product.Id,
+		CategoryId:      product.CategoryId,
+		Name:            product.Name,
+		Description:     product.Description,
+		Price:           product.Price,   // Keeps intact base ledger price
+		IsOnSale:        isOnSale,        // Now updates accurately
+		DiscountedPrice: discountedPrice, // Populated properly
+		Stock:           product.Stock,
+		SKU:             product.SKU,
+		IsActive:        product.IsActive,
 		Category: dto.CategoryResponse{
 			Id:          product.Category.Id,
 			Name:        product.Category.Name,

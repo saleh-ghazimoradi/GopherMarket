@@ -1,6 +1,10 @@
 package dto
 
-import "github.com/saleh-ghazimoradi/GopherMarket/internal/helper"
+import (
+	"github.com/saleh-ghazimoradi/GopherMarket/internal/domain"
+	"github.com/saleh-ghazimoradi/GopherMarket/internal/helper"
+	"time"
+)
 
 func validateFirstNameAndLastName(v *helper.Validator, name string) {
 	v.Check(helper.NotBlank(name), "name", "First and last names must be provided")
@@ -21,6 +25,29 @@ func validatePassword(v *helper.Validator, password string) {
 
 func validateRefreshToken(v *helper.Validator, refreshToken string) {
 	v.Check(helper.NotBlank(refreshToken), "refresh_token", "Refresh token must be provided")
+}
+
+func validateProductId(v *helper.Validator, productId uint) {
+	v.Check(productId > 0, "product_id", "Product ID must be provided")
+}
+
+func validateDiscountType(v *helper.Validator, discountType domain.DiscountType) {
+	isValidType := discountType == domain.DiscountPercentage || discountType == domain.DiscountFixed
+	v.Check(isValidType, "discount_type", "Discount type must be percentage, fixed")
+}
+
+func validateDiscountValue(v *helper.Validator, discountType domain.DiscountType, value float64) {
+	v.Check(value > 0, "discount_value", "Discount value must be greater than 0")
+	if discountType == domain.DiscountPercentage {
+		v.Check(value <= 100, "discount_value", "Percentage discount cannot exceed 100%")
+	}
+}
+
+func validateDiscountTimeline(v *helper.Validator, startTime, endTime time.Time) {
+	v.Check(!startTime.IsZero(), "start_time", "Start time must be provided")
+	v.Check(!endTime.IsZero(), "end_time", "End time must be provided")
+	v.Check(endTime.After(startTime), "end_time", "End time must be after the start time")
+	v.Check(endTime.After(time.Now()), "end_time", "End time cannot be in the past")
 }
 
 func validateCategoryName(v *helper.Validator, name string) {
@@ -130,4 +157,11 @@ func ValidateResetPasswordRequest(v *helper.Validator, req *ResetPasswordRequest
 
 func ValidateChangePasswordRequest(v *helper.Validator, req *ChangePasswordRequest) {
 	validatePassword(v, req.NewPassword)
+}
+
+func ValidateCreateDiscountRequest(v *helper.Validator, req *CreateDiscountRequest) {
+	validateProductId(v, req.ProductId)
+	validateDiscountType(v, req.DiscountType)
+	validateDiscountValue(v, req.DiscountType, req.DiscountValue)
+	validateDiscountTimeline(v, req.StartTime, req.EndTime)
 }

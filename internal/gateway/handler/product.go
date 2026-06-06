@@ -61,8 +61,8 @@ func (p *ProductHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 // @Failure 500 {object} helper.Response "Internal server error"
 // @Router /products [get]
 func (p *ProductHandler) GetProducts(w http.ResponseWriter, r *http.Request) {
-	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
-	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	page, _ := helper.ReadQueryParam(r, "page")
+	limit, _ := helper.ReadQueryParam(r, "limit")
 
 	products, meta, err := p.productService.GetProducts(r.Context(), page, limit)
 	if err != nil {
@@ -84,7 +84,7 @@ func (p *ProductHandler) GetProducts(w http.ResponseWriter, r *http.Request) {
 // @Failure 404 {object} helper.Response "Product not found"
 // @Router /products/{id} [get]
 func (p *ProductHandler) GetProduct(w http.ResponseWriter, r *http.Request) {
-	id, err := helper.ReadParams(r)
+	id, err := helper.ReadParams(r, "id")
 	if err != nil {
 		helper.BadRequestResponse(w, "Invalid id", err)
 		return
@@ -114,7 +114,7 @@ func (p *ProductHandler) GetProduct(w http.ResponseWriter, r *http.Request) {
 // @Failure 403 {object} helper.Response "Admin access required"
 // @Router /products/{id} [put]
 func (p *ProductHandler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
-	id, err := helper.ReadParams(r)
+	id, err := helper.ReadParams(r, "id")
 	if err != nil {
 		helper.BadRequestResponse(w, "Invalid id", err)
 		return
@@ -154,7 +154,7 @@ func (p *ProductHandler) UpdateProduct(w http.ResponseWriter, r *http.Request) {
 // @Failure 403 {object} helper.Response "Admin access required"
 // @Router /products/{id} [delete]
 func (p *ProductHandler) DeleteProduct(w http.ResponseWriter, r *http.Request) {
-	id, err := helper.ReadParams(r)
+	id, err := helper.ReadParams(r, "id")
 	if err != nil {
 		helper.BadRequestResponse(w, "Invalid id", err)
 		return
@@ -183,7 +183,7 @@ func (p *ProductHandler) DeleteProduct(w http.ResponseWriter, r *http.Request) {
 // @Failure 403 {object} helper.Response "Admin access required"
 // @Router /products/{id}/image [post]
 func (p *ProductHandler) UploadProductImage(w http.ResponseWriter, r *http.Request) {
-	id, err := helper.ReadParams(r)
+	id, err := helper.ReadParams(r, "id")
 	if err != nil {
 		helper.BadRequestResponse(w, "Invalid id", err)
 		return

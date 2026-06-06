@@ -80,7 +80,7 @@ func (c *CategoryHandler) GetCategories(w http.ResponseWriter, r *http.Request) 
 // @Failure 403 {object} helper.Response "Admin access required"
 // @Router /categories/{id} [put]
 func (c *CategoryHandler) UpdateCategory(w http.ResponseWriter, r *http.Request) {
-	id, err := helper.ReadParams(r)
+	id, err := helper.ReadParams(r, "id")
 	if err != nil {
 		helper.BadRequestResponse(w, "invalid id", err)
 		return
@@ -120,7 +120,7 @@ func (c *CategoryHandler) UpdateCategory(w http.ResponseWriter, r *http.Request)
 // @Failure 403 {object} helper.Response "Admin access required"
 // @Router /categories/{id} [delete]
 func (c *CategoryHandler) DeleteCategory(w http.ResponseWriter, r *http.Request) {
-	id, err := helper.ReadParams(r)
+	id, err := helper.ReadParams(r, "id")
 	if err != nil {
 		helper.BadRequestResponse(w, "invalid id", err)
 		return

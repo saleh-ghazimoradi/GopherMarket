@@ -146,33 +146,66 @@ func (c *cartService) convertToCartResponse(cart *domain.Cart) *dto.CartResponse
 	var total float64
 
 	for i := range cart.CartItems {
-		subtotal := float64(cart.CartItems[i].Quantity) * cart.CartItems[i].Product.Price
+		item := &cart.CartItems[i]
+		product := &item.Product
+
+		sellingPrice := product.Price
+		isOnSale := false
+
+		if len(product.Discounts) > 0 {
+			calculatedPrice := CalculateDiscountPrice(&product.Discounts[0], product.Price)
+			if calculatedPrice < product.Price {
+				sellingPrice = calculatedPrice
+				isOnSale = true
+			}
+		}
+
+		subtotal := float64(item.Quantity) * sellingPrice
 		total += subtotal
 
+		images := make([]dto.ProductImageResponse, len(product.Images))
+		for j := range product.Images {
+			images[j] = dto.ProductImageResponse{
+				Id:        product.Images[j].Id,
+				URL:       product.Images[j].URL,
+				AltText:   product.Images[j].AltText,
+				IsPrimary: product.Images[j].IsPrimary,
+				CreatedAt: product.Images[j].CreatedAt,
+			}
+		}
+
 		cartItems[i] = dto.CartItemResponse{
-			Id: cart.CartItems[i].Id,
+			Id: item.Id,
 			Product: dto.ProductResponse{
-				Id:          cart.CartItems[i].Product.Id,
-				CategoryId:  cart.CartItems[i].Product.CategoryId,
-				Name:        cart.CartItems[i].Product.Name,
-				Description: cart.CartItems[i].Product.Description,
-				Price:       cart.CartItems[i].Product.Price,
-				Stock:       cart.CartItems[i].Product.Stock,
-				SKU:         cart.CartItems[i].Product.SKU,
-				IsActive:    cart.CartItems[i].Product.IsActive,
+				Id:              product.Id,
+				CategoryId:      product.CategoryId,
+				Name:            product.Name,
+				Description:     product.Description,
+				Price:           product.Price,
+				IsOnSale:        isOnSale,
+				DiscountedPrice: sellingPrice,
+				Stock:           product.Stock,
+				SKU:             product.SKU,
+				IsActive:        product.IsActive,
 				Category: dto.CategoryResponse{
-					Id:          cart.CartItems[i].Product.Category.Id,
-					Name:        cart.CartItems[i].Product.Name,
-					Description: cart.CartItems[i].Product.Description,
-					IsActive:    cart.CartItems[i].Product.IsActive,
+					Id:          product.Category.Id,
+					Name:        product.Category.Name,
+					Description: product.Category.Description,
+					IsActive:    product.Category.IsActive,
+					CreatedAt:   product.Category.CreatedAt,
+					UpdatedAt:   product.Category.UpdatedAt,
 				},
+				Images:    images,
+				CreatedAt: product.CreatedAt,
+				UpdatedAt: product.UpdatedAt,
 			},
-			Quantity:  cart.CartItems[i].Quantity,
+			Quantity:  item.Quantity,
 			Subtotal:  subtotal,
-			CreatedAt: cart.CartItems[i].CreatedAt,
-			UpdatedAt: cart.CartItems[i].UpdatedAt,
+			CreatedAt: item.CreatedAt,
+			UpdatedAt: item.UpdatedAt,
 		}
 	}
+
 	return &dto.CartResponse{
 		Id:        cart.Id,
 		UserId:    cart.UserId,

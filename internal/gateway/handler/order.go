@@ -5,7 +5,6 @@ import (
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/service"
 	"github.com/saleh-ghazimoradi/GopherMarket/utils"
 	"net/http"
-	"strconv"
 )
 
 type OrderHandler struct {
@@ -57,7 +56,7 @@ func (o *OrderHandler) GetUserOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id, err := helper.ReadParams(r)
+	id, err := helper.ReadParams(r, "id")
 	if err != nil {
 		helper.BadRequestResponse(w, "Invalid order id", err)
 		return
@@ -91,8 +90,8 @@ func (o *OrderHandler) GetUserOrders(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
-	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	page, _ := helper.ReadQueryParam(r, "page")
+	limit, _ := helper.ReadQueryParam(r, "limit")
 
 	orders, meta, err := o.orderService.GetOrders(r.Context(), userId, page, limit)
 	if err != nil {
