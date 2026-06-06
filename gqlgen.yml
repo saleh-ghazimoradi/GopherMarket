@@ -39,8 +39,6 @@ models:
     model: github.com/saleh-ghazimoradi/GopherMarket/internal/dto.ProductImageResponse
   Upload:
     model: github.com/99designs/gqlgen/graphql.Upload
-  Discount:
-    model: github.com/saleh-ghazimoradi/GopherMarket/internal/dto.DiscountResponse
 
   RegisterInput:
     model: github.com/saleh-ghazimoradi/GopherMarket/internal/dto.RegisterRequest
@@ -68,8 +66,6 @@ models:
     model: github.com/saleh-ghazimoradi/GopherMarket/internal/dto.UpdateProductRequest
   AddToCartInput:
     model: github.com/saleh-ghazimoradi/GopherMarket/internal/dto.AddToCartRequest
-  CreateDiscount:
-    model: github.com/saleh-ghazimoradi/GopherMarket/internal/dto.CreateDiscountRequest
   ID:
     model: github.com/99designs/gqlgen/graphql.String
   UInt:
