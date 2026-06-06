@@ -32,6 +32,9 @@ type Mutation {
     updateProduct(id: ID!, input: UpdateProductInput!): Product!
     deleteProduct(id: ID!): Boolean!
 
+    createDiscount(input: CreateDiscountInput!): Discount!
+    deleteDiscount(id: ID!, productId: UInt!): Boolean!
+
     addToCart(input: AddToCartInput!): Cart!
     updateCartItem(id: ID!, input: UpdateCartItemInput!): Cart!
     removeFromCart(id: ID!): Boolean!

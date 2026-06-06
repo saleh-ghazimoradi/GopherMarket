@@ -72,3 +72,11 @@ input AddToCartInput {
 input UpdateCartItemInput {
     quantity: Int!
 }
+
+input CreateDiscountInput {
+    productId: UInt!
+    discountType: DiscountType!
+    discountValue: Float!
+    startTime: Time!
+    endTime: Time!
+}

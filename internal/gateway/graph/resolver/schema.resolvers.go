@@ -341,6 +341,54 @@ func (r *mutationResolver) DeleteProduct(ctx context.Context, id string) (bool, 
 	return true, nil
 }
 
+// CreateDiscount is the resolver for the createDiscount field.
+func (r *mutationResolver) CreateDiscount(ctx context.Context, input dto.CreateDiscountRequest) (*dto.DiscountResponse, error) {
+	admin, err := isAdmin(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if !admin {
+		return nil, errors.New("access denied")
+	}
+
+	v := helper.NewValidator()
+	dto.ValidateCreateDiscountRequest(v, &input)
+	if !v.Valid() {
+		return nil, helper.NewValidateError(v)
+	}
+
+	discount, err := r.discountService.CreateDiscount(ctx, &input)
+	if err != nil {
+		return nil, fmt.Errorf("create discount error: %w", err)
+	}
+
+	return discount, nil
+}
+
+// DeleteDiscount is the resolver for the deleteDiscount field.
+func (r *mutationResolver) DeleteDiscount(ctx context.Context, id string, productID uint) (bool, error) {
+	admin, err := isAdmin(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	if !admin {
+		return false, errors.New("access denied")
+	}
+
+	discountId, err := parseId(id)
+	if err != nil {
+		return false, fmt.Errorf("parse discount id error: %w", err)
+	}
+
+	if err := r.discountService.DeleteDiscount(ctx, discountId, productID); err != nil {
+		return false, fmt.Errorf("delete discount error: %w", err)
+	}
+
+	return true, nil
+}
+
 // AddToCart is the resolver for the addToCart field.
 func (r *mutationResolver) AddToCart(ctx context.Context, input dto.AddToCartRequest) (*dto.CartResponse, error) {
 	userId, exists := utils.UserIdFromContext(ctx)

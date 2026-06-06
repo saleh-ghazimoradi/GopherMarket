@@ -15,6 +15,7 @@ import (
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/introspection"
+	"github.com/saleh-ghazimoradi/GopherMarket/internal/domain"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/dto"
 	"github.com/saleh-ghazimoradi/GopherMarket/internal/gateway/graph/model"
 	gqlparser "github.com/vektah/gqlparser/v2"
@@ -34,6 +35,7 @@ type ResolverRoot interface {
 	Cart() CartResolver
 	CartItem() CartItemResolver
 	Category() CategoryResolver
+	Discount() DiscountResolver
 	Mutation() MutationResolver
 	Order() OrderResolver
 	OrderItem() OrderItemResolver
@@ -79,13 +81,25 @@ type ComplexityRoot struct {
 		UpdatedAt   func(childComplexity int) int
 	}
 
+	Discount struct {
+		CreatedAt     func(childComplexity int) int
+		DiscountType  func(childComplexity int) int
+		DiscountValue func(childComplexity int) int
+		EndTime       func(childComplexity int) int
+		ID            func(childComplexity int) int
+		ProductID     func(childComplexity int) int
+		StartTime     func(childComplexity int) int
+	}
+
 	Mutation struct {
 		AddToCart          func(childComplexity int, input dto.AddToCartRequest) int
 		ChangePassword     func(childComplexity int, input dto.ChangePasswordRequest) int
 		CreateCategory     func(childComplexity int, input dto.CreateCategoryRequest) int
+		CreateDiscount     func(childComplexity int, input dto.CreateDiscountRequest) int
 		CreateOrder        func(childComplexity int) int
 		CreateProduct      func(childComplexity int, input dto.CreateProductRequest) int
 		DeleteCategory     func(childComplexity int, id string) int
+		DeleteDiscount     func(childComplexity int, id string, productID uint) int
 		DeleteProduct      func(childComplexity int, id string) int
 		ForgotPassword     func(childComplexity int, input dto.ForgotPasswordRequest) int
 		GoogleLogin        func(childComplexity int, input dto.GoogleLoginRequest) int
@@ -137,18 +151,20 @@ type ComplexityRoot struct {
 	}
 
 	Product struct {
-		Category    func(childComplexity int) int
-		CategoryID  func(childComplexity int) int
-		CreatedAt   func(childComplexity int) int
-		Description func(childComplexity int) int
-		ID          func(childComplexity int) int
-		Images      func(childComplexity int) int
-		IsActive    func(childComplexity int) int
-		Name        func(childComplexity int) int
-		Price       func(childComplexity int) int
-		SKU         func(childComplexity int) int
-		Stock       func(childComplexity int) int
-		UpdatedAt   func(childComplexity int) int
+		Category        func(childComplexity int) int
+		CategoryID      func(childComplexity int) int
+		CreatedAt       func(childComplexity int) int
+		Description     func(childComplexity int) int
+		DiscountedPrice func(childComplexity int) int
+		ID              func(childComplexity int) int
+		Images          func(childComplexity int) int
+		IsActive        func(childComplexity int) int
+		IsOnSale        func(childComplexity int) int
+		Name            func(childComplexity int) int
+		Price           func(childComplexity int) int
+		SKU             func(childComplexity int) int
+		Stock           func(childComplexity int) int
+		UpdatedAt       func(childComplexity int) int
 	}
 
 	ProductConnection struct {
@@ -201,6 +217,10 @@ type CartItemResolver interface {
 type CategoryResolver interface {
 	ID(ctx context.Context, obj *dto.CategoryResponse) (string, error)
 }
+type DiscountResolver interface {
+	ID(ctx context.Context, obj *dto.DiscountResponse) (string, error)
+	ProductID(ctx context.Context, obj *dto.DiscountResponse) (string, error)
+}
 type MutationResolver interface {
 	Register(ctx context.Context, input dto.RegisterRequest) (*dto.AuthResponse, error)
 	Login(ctx context.Context, input dto.LoginRequest) (*dto.AuthResponse, error)
@@ -217,6 +237,8 @@ type MutationResolver interface {
 	CreateProduct(ctx context.Context, input dto.CreateProductRequest) (*dto.ProductResponse, error)
 	UpdateProduct(ctx context.Context, id string, input dto.UpdateProductRequest) (*dto.ProductResponse, error)
 	DeleteProduct(ctx context.Context, id string) (bool, error)
+	CreateDiscount(ctx context.Context, input dto.CreateDiscountRequest) (*dto.DiscountResponse, error)
+	DeleteDiscount(ctx context.Context, id string, productID uint) (bool, error)
 	AddToCart(ctx context.Context, input dto.AddToCartRequest) (*dto.CartResponse, error)
 	UpdateCartItem(ctx context.Context, id string, input dto.UpdateCartItemRequest) (*dto.CartResponse, error)
 	RemoveFromCart(ctx context.Context, id string) (bool, error)
@@ -388,6 +410,49 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.Category.UpdatedAt(childComplexity), true
 
+	case "Discount.createdAt":
+		if e.ComplexityRoot.Discount.CreatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Discount.CreatedAt(childComplexity), true
+	case "Discount.discountType":
+		if e.ComplexityRoot.Discount.DiscountType == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Discount.DiscountType(childComplexity), true
+	case "Discount.discountValue":
+		if e.ComplexityRoot.Discount.DiscountValue == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Discount.DiscountValue(childComplexity), true
+	case "Discount.endTime":
+		if e.ComplexityRoot.Discount.EndTime == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Discount.EndTime(childComplexity), true
+	case "Discount.id":
+		if e.ComplexityRoot.Discount.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Discount.ID(childComplexity), true
+	case "Discount.productId":
+		if e.ComplexityRoot.Discount.ProductID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Discount.ProductID(childComplexity), true
+	case "Discount.startTime":
+		if e.ComplexityRoot.Discount.StartTime == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Discount.StartTime(childComplexity), true
+
 	case "Mutation.addToCart":
 		if e.ComplexityRoot.Mutation.AddToCart == nil {
 			break
@@ -421,6 +486,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.CreateCategory(childComplexity, args["input"].(dto.CreateCategoryRequest)), true
+	case "Mutation.createDiscount":
+		if e.ComplexityRoot.Mutation.CreateDiscount == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_createDiscount_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.CreateDiscount(childComplexity, args["input"].(dto.CreateDiscountRequest)), true
 	case "Mutation.createOrder":
 		if e.ComplexityRoot.Mutation.CreateOrder == nil {
 			break
@@ -449,6 +525,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.DeleteCategory(childComplexity, args["id"].(string)), true
+	case "Mutation.deleteDiscount":
+		if e.ComplexityRoot.Mutation.DeleteDiscount == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_deleteDiscount_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.DeleteDiscount(childComplexity, args["id"].(string), args["productId"].(uint)), true
 	case "Mutation.deleteProduct":
 		if e.ComplexityRoot.Mutation.DeleteProduct == nil {
 			break
@@ -737,6 +824,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Product.Description(childComplexity), true
+	case "Product.discounted_price":
+		if e.ComplexityRoot.Product.DiscountedPrice == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Product.DiscountedPrice(childComplexity), true
 	case "Product.id":
 		if e.ComplexityRoot.Product.ID == nil {
 			break
@@ -755,6 +848,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Product.IsActive(childComplexity), true
+	case "Product.is_on_sale":
+		if e.ComplexityRoot.Product.IsOnSale == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Product.IsOnSale(childComplexity), true
 	case "Product.name":
 		if e.ComplexityRoot.Product.Name == nil {
 			break
@@ -967,6 +1066,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputAddToCartInput,
 		ec.unmarshalInputChangePasswordInput,
 		ec.unmarshalInputCreateCategoryInput,
+		ec.unmarshalInputCreateDiscountInput,
 		ec.unmarshalInputCreateProductInput,
 		ec.unmarshalInputForgotPasswordInput,
 		ec.unmarshalInputGoogleLoginInput,
@@ -1139,6 +1239,26 @@ func (ec *executionContext) childFields_Category(ctx context.Context, field grap
 	return nil, fmt.Errorf("no field named %q was found under type Category", field.Name)
 }
 
+func (ec *executionContext) childFields_Discount(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "id":
+		return ec.fieldContext_Discount_id(ctx, field)
+	case "productId":
+		return ec.fieldContext_Discount_productId(ctx, field)
+	case "discountType":
+		return ec.fieldContext_Discount_discountType(ctx, field)
+	case "discountValue":
+		return ec.fieldContext_Discount_discountValue(ctx, field)
+	case "startTime":
+		return ec.fieldContext_Discount_startTime(ctx, field)
+	case "endTime":
+		return ec.fieldContext_Discount_endTime(ctx, field)
+	case "createdAt":
+		return ec.fieldContext_Discount_createdAt(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type Discount", field.Name)
+}
+
 func (ec *executionContext) childFields_Order(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 	switch field.Name {
 	case "id":
@@ -1219,6 +1339,10 @@ func (ec *executionContext) childFields_Product(ctx context.Context, field graph
 		return ec.fieldContext_Product_description(ctx, field)
 	case "price":
 		return ec.fieldContext_Product_price(ctx, field)
+	case "is_on_sale":
+		return ec.fieldContext_Product_is_on_sale(ctx, field)
+	case "discounted_price":
+		return ec.fieldContext_Product_discounted_price(ctx, field)
 	case "stock":
 		return ec.fieldContext_Product_stock(ctx, field)
 	case "sku":
@@ -1453,6 +1577,20 @@ func (ec *executionContext) field_Mutation_createCategory_args(ctx context.Conte
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_createDiscount_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input",
+		func(ctx context.Context, v any) (dto.CreateDiscountRequest, error) {
+			return ec.unmarshalNCreateDiscountInput2githubᚗcomᚋsalehᚑghazimoradiᚋGopherMarketᚋinternalᚋdtoᚐCreateDiscountRequest(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_createProduct_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -1478,6 +1616,28 @@ func (ec *executionContext) field_Mutation_deleteCategory_args(ctx context.Conte
 		return nil, err
 	}
 	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_deleteDiscount_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNID2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "productId",
+		func(ctx context.Context, v any) (uint, error) {
+			return ec.unmarshalNUInt2uint(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["productId"] = arg1
 	return args, nil
 }
 
@@ -2318,6 +2478,167 @@ func (ec *executionContext) fieldContext_Category_updated_at(_ context.Context, 
 	return graphql.NewScalarFieldContext("Category", field, false, false, errors.New("field of type Time does not have child fields"))
 }
 
+func (ec *executionContext) _Discount_id(ctx context.Context, field graphql.CollectedField, obj *dto.DiscountResponse) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Discount_id(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Discount().ID(ctx, obj)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Discount_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Discount", field, true, true, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _Discount_productId(ctx context.Context, field graphql.CollectedField, obj *dto.DiscountResponse) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Discount_productId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Discount().ProductID(ctx, obj)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Discount_productId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Discount", field, true, true, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _Discount_discountType(ctx context.Context, field graphql.CollectedField, obj *dto.DiscountResponse) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Discount_discountType(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.DiscountType, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v domain.DiscountType) graphql.Marshaler {
+			return ec.marshalNDiscountType2githubᚗcomᚋsalehᚑghazimoradiᚋGopherMarketᚋinternalᚋdomainᚐDiscountType(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Discount_discountType(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Discount", field, false, false, errors.New("field of type DiscountType does not have child fields"))
+}
+
+func (ec *executionContext) _Discount_discountValue(ctx context.Context, field graphql.CollectedField, obj *dto.DiscountResponse) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Discount_discountValue(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.DiscountValue, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v float64) graphql.Marshaler {
+			return ec.marshalNFloat2float64(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Discount_discountValue(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Discount", field, false, false, errors.New("field of type Float does not have child fields"))
+}
+
+func (ec *executionContext) _Discount_startTime(ctx context.Context, field graphql.CollectedField, obj *dto.DiscountResponse) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Discount_startTime(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.StartTime, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v time.Time) graphql.Marshaler {
+			return ec.marshalNTime2timeᚐTime(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Discount_startTime(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Discount", field, false, false, errors.New("field of type Time does not have child fields"))
+}
+
+func (ec *executionContext) _Discount_endTime(ctx context.Context, field graphql.CollectedField, obj *dto.DiscountResponse) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Discount_endTime(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.EndTime, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v time.Time) graphql.Marshaler {
+			return ec.marshalNTime2timeᚐTime(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Discount_endTime(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Discount", field, false, false, errors.New("field of type Time does not have child fields"))
+}
+
+func (ec *executionContext) _Discount_createdAt(ctx context.Context, field graphql.CollectedField, obj *dto.DiscountResponse) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Discount_createdAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v time.Time) graphql.Marshaler {
+			return ec.marshalNTime2timeᚐTime(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Discount_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Discount", field, false, false, errors.New("field of type Time does not have child fields"))
+}
+
 func (ec *executionContext) _Mutation_register(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -2939,6 +3260,94 @@ func (ec *executionContext) fieldContext_Mutation_deleteProduct(ctx context.Cont
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_deleteProduct_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_createDiscount(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_createDiscount(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().CreateDiscount(ctx, fc.Args["input"].(dto.CreateDiscountRequest))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *dto.DiscountResponse) graphql.Marshaler {
+			return ec.marshalNDiscount2ᚖgithubᚗcomᚋsalehᚑghazimoradiᚋGopherMarketᚋinternalᚋdtoᚐDiscountResponse(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_createDiscount(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Discount(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_createDiscount_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_deleteDiscount(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_deleteDiscount(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().DeleteDiscount(ctx, fc.Args["id"].(string), fc.Args["productId"].(uint))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_deleteDiscount(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_deleteDiscount_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -3747,6 +4156,52 @@ func (ec *executionContext) _Product_price(ctx context.Context, field graphql.Co
 	)
 }
 func (ec *executionContext) fieldContext_Product_price(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Product", field, false, false, errors.New("field of type Float does not have child fields"))
+}
+
+func (ec *executionContext) _Product_is_on_sale(ctx context.Context, field graphql.CollectedField, obj *dto.ProductResponse) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Product_is_on_sale(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.IsOnSale, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Product_is_on_sale(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Product", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
+func (ec *executionContext) _Product_discounted_price(ctx context.Context, field graphql.CollectedField, obj *dto.ProductResponse) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Product_discounted_price(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.DiscountedPrice, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v float64) graphql.Marshaler {
+			return ec.marshalNFloat2float64(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Product_discounted_price(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("Product", field, false, false, errors.New("field of type Float does not have child fields"))
 }
 
@@ -5865,6 +6320,64 @@ func (ec *executionContext) unmarshalInputCreateCategoryInput(ctx context.Contex
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputCreateDiscountInput(ctx context.Context, obj any) (dto.CreateDiscountRequest, error) {
+	var it dto.CreateDiscountRequest
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"productId", "discountType", "discountValue", "startTime", "endTime"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "productId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("productId"))
+			data, err := ec.unmarshalNUInt2uint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ProductId = data
+		case "discountType":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("discountType"))
+			data, err := ec.unmarshalNDiscountType2githubᚗcomᚋsalehᚑghazimoradiᚋGopherMarketᚋinternalᚋdomainᚐDiscountType(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DiscountType = data
+		case "discountValue":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("discountValue"))
+			data, err := ec.unmarshalNFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DiscountValue = data
+		case "startTime":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("startTime"))
+			data, err := ec.unmarshalNTime2timeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StartTime = data
+		case "endTime":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("endTime"))
+			data, err := ec.unmarshalNTime2timeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EndTime = data
+		}
+	}
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputCreateProductInput(ctx context.Context, obj any) (dto.CreateProductRequest, error) {
 	var it dto.CreateProductRequest
 	if obj == nil {
@@ -6673,6 +7186,137 @@ func (ec *executionContext) _Category(ctx context.Context, sel ast.SelectionSet,
 	return out
 }
 
+var discountImplementors = []string{"Discount"}
+
+func (ec *executionContext) _Discount(ctx context.Context, sel ast.SelectionSet, obj *dto.DiscountResponse) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, discountImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Discount")
+		case "id":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Discount_id(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "productId":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Discount_productId(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "discountType":
+			out.Values[i] = ec._Discount_discountType(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "discountValue":
+			out.Values[i] = ec._Discount_discountValue(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "startTime":
+			out.Values[i] = ec._Discount_startTime(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "endTime":
+			out.Values[i] = ec._Discount_endTime(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "createdAt":
+			out.Values[i] = ec._Discount_createdAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferred), math.MaxInt32)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var mutationImplementors = []string{"Mutation"}
 
 func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet) graphql.Marshaler {
@@ -6793,6 +7437,20 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "deleteProduct":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_deleteProduct(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createDiscount":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_createDiscount(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "deleteDiscount":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_deleteDiscount(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -7308,6 +7966,16 @@ func (ec *executionContext) _Product(ctx context.Context, sel ast.SelectionSet, 
 			}
 		case "price":
 			out.Values[i] = ec._Product_price(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "is_on_sale":
+			out.Values[i] = ec._Product_is_on_sale(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "discounted_price":
+			out.Values[i] = ec._Product_discounted_price(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
@@ -8288,9 +8956,45 @@ func (ec *executionContext) unmarshalNCreateCategoryInput2githubᚗcomᚋsaleh�
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalNCreateDiscountInput2githubᚗcomᚋsalehᚑghazimoradiᚋGopherMarketᚋinternalᚋdtoᚐCreateDiscountRequest(ctx context.Context, v any) (dto.CreateDiscountRequest, error) {
+	res, err := ec.unmarshalInputCreateDiscountInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNCreateProductInput2githubᚗcomᚋsalehᚑghazimoradiᚋGopherMarketᚋinternalᚋdtoᚐCreateProductRequest(ctx context.Context, v any) (dto.CreateProductRequest, error) {
 	res, err := ec.unmarshalInputCreateProductInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNDiscount2githubᚗcomᚋsalehᚑghazimoradiᚋGopherMarketᚋinternalᚋdtoᚐDiscountResponse(ctx context.Context, sel ast.SelectionSet, v dto.DiscountResponse) graphql.Marshaler {
+	return ec._Discount(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNDiscount2ᚖgithubᚗcomᚋsalehᚑghazimoradiᚋGopherMarketᚋinternalᚋdtoᚐDiscountResponse(ctx context.Context, sel ast.SelectionSet, v *dto.DiscountResponse) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._Discount(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNDiscountType2githubᚗcomᚋsalehᚑghazimoradiᚋGopherMarketᚋinternalᚋdomainᚐDiscountType(ctx context.Context, v any) (domain.DiscountType, error) {
+	tmp, err := graphql.UnmarshalString(v)
+	res := domain.DiscountType(tmp)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNDiscountType2githubᚗcomᚋsalehᚑghazimoradiᚋGopherMarketᚋinternalᚋdomainᚐDiscountType(ctx context.Context, sel ast.SelectionSet, v domain.DiscountType) graphql.Marshaler {
+	_ = sel
+	res := graphql.MarshalString(string(v))
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
 }
 
 func (ec *executionContext) unmarshalNFloat2float64(ctx context.Context, v any) (float64, error) {

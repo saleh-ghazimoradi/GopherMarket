@@ -11,6 +11,7 @@ type Resolver struct {
 	categoryService service.CategoryService
 	orderService    service.OrderService
 	productService  service.ProductService
+	discountService service.DiscountService
 	userService     service.UserService
 	uploadService   service.UploadService
 	cfg             *config.Config

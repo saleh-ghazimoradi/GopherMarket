@@ -34,6 +34,16 @@ func (r *categoryResolver) ID(ctx context.Context, obj *dto.CategoryResponse) (s
 }
 
 // ID is the resolver for the id field.
+func (r *discountResolver) ID(ctx context.Context, obj *dto.DiscountResponse) (string, error) {
+	return fmt.Sprintf("%d", obj.Id), nil
+}
+
+// ProductID is the resolver for the productId field.
+func (r *discountResolver) ProductID(ctx context.Context, obj *dto.DiscountResponse) (string, error) {
+	return fmt.Sprintf("%d", obj.ProductId), nil
+}
+
+// ID is the resolver for the id field.
 func (r *orderResolver) ID(ctx context.Context, obj *dto.OrderResponse) (string, error) {
 	return fmt.Sprintf("%d", obj.UserId), nil
 }
@@ -77,6 +87,9 @@ func (r *Resolver) CartItem() graph.CartItemResolver { return &cartItemResolver{
 // Category returns graph.CategoryResolver implementation.
 func (r *Resolver) Category() graph.CategoryResolver { return &categoryResolver{r} }
 
+// Discount returns graph.DiscountResolver implementation.
+func (r *Resolver) Discount() graph.DiscountResolver { return &discountResolver{r} }
+
 // Order returns graph.OrderResolver implementation.
 func (r *Resolver) Order() graph.OrderResolver { return &orderResolver{r} }
 
@@ -95,6 +108,7 @@ func (r *Resolver) User() graph.UserResolver { return &userResolver{r} }
 type cartResolver struct{ *Resolver }
 type cartItemResolver struct{ *Resolver }
 type categoryResolver struct{ *Resolver }
+type discountResolver struct{ *Resolver }
 type orderResolver struct{ *Resolver }
 type orderItemResolver struct{ *Resolver }
 type productResolver struct{ *Resolver }
