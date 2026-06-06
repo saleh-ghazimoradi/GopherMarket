@@ -49,6 +49,12 @@ func WithProductService(productService service.ProductService) Options {
 	}
 }
 
+func WithDiscountService(discountService service.DiscountService) Options {
+	return func(r *Resolver) {
+		r.discountService = discountService
+	}
+}
+
 func WithUserService(userService service.UserService) Options {
 	return func(r *Resolver) {
 		r.userService = userService

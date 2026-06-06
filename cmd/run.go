@@ -194,6 +194,7 @@ var runCmd = &cobra.Command{
 			resolver.WithUserService(userService),
 			resolver.WithCategoryService(categoryService),
 			resolver.WithProductService(productService),
+			resolver.WithDiscountService(discountService),
 			resolver.WithCartService(cartService),
 			resolver.WithOrderService(orderService),
 			resolver.WithUploadService(uploadService),
