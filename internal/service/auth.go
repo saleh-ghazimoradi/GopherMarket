@@ -220,7 +220,7 @@ func (a *authService) ForgotPassword(ctx context.Context, req *dto.ForgotPasswor
 
 	span.SetAttributes(attribute.Int64("user.id", int64(user.Id)))
 
-	code, err := utils.GenerateSecureCode(8)
+	code, err := utils.GenerateCode(8)
 	if err != nil {
 		return fmt.Errorf("failed to generate reset code: %w", err)
 	}

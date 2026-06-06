@@ -7,7 +7,7 @@ import (
 
 const codeCharset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
 
-func GenerateSecureCode(length int) (string, error) {
+func GenerateCode(length int) (string, error) {
 	if length <= 0 {
 		length = 8
 	}
